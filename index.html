@@ -1,3 +1,195 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KR Downloader Pro</title>
+    <style>
+        :root { 
+            --bg: #0b0e14; --card: #1a1d21; --text: #ffffff; 
+            --grad: linear-gradient(45deg,#ff0055,#ffdd00,#00ffcc,#3366ff,#cc00ff); 
+            --nav-bg: #111;
+        } 
+        .light-mode { --bg:#f5f5f5; --card:#ffffff; --text:#000000; --nav-bg: #eee; } 
+        
+        body { margin:0; font-family:sans-serif; background:var(--bg); color:var(--text); padding-bottom:85px; overflow-x:hidden; transition: 0.3s; } 
+        
+        header { padding:15px; background:var(--card); text-align:center; position: sticky; top:0; z-index:1001; border-bottom:1px solid #333; } 
+        .brand-name { font-size:22px; font-weight:900; background:var(--grad); -webkit-background-clip:text; -webkit-text-fill-color:transparent; display:flex; align-items:center; justify-content:center; gap:10px; } 
+        .vidmate-download { animation: bounce 0.8s infinite; display:inline-block; -webkit-text-fill-color:initial; font-size: 26px; }
+        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+
+        .page { display:none; padding:15px; } 
+        .active-page { display:block; animation: fadeIn 0.3s; } 
+
+        .setting-row { 
+            display:flex; align-items:center; justify-content: space-between;
+            padding:15px; background:var(--card); border-radius:18px; 
+            margin-bottom:12px; border:1px solid rgba(128,128,128,0.2); cursor:pointer;
+        }
+        .s-left { display: flex; align-items: center; gap: 15px; }
+        .s-icon { width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: bold; }
+        .cache-red { color: #ff0055; font-weight: 900; font-size: 13px; background: rgba(255,0,85,0.1); padding: 5px 10px; border-radius: 10px; }
+
+        .option-menu { display:none; background:var(--card); padding:5px; border-radius:12px; margin: -5px 0 15px; border:1px solid #444; }
+        .opt-item { padding:12px; border-bottom:1px solid rgba(128,128,128,0.1); font-size:14px; color:var(--text); display:flex; justify-content:space-between; align-items: center; }
+
+        .dl-card { display:flex; align-items:center; padding:12px; background:var(--card); border-radius:15px; margin-bottom:10px; border:1px solid #333; gap:10px; }
+        .dl-thumb { width:60px; height:60px; border-radius:8px; object-fit:cover; background:#000; }
+        .dl-info { flex:1; }
+        .prog-bg { width:100%; height:8px; background:#333; border-radius:10px; overflow:hidden; margin:5px 0; }
+        .prog-fill { width:0%; height:100%; background:var(--grad); transition:0.3s; }
+        .dl-stats { display:flex; justify-content:space-between; font-size:10px; color:#888; }
+
+        nav { position:fixed; bottom:0; width:100%; background:var(--nav-bg); display:flex; justify-content:space-around; padding:12px 0; border-top:1px solid #222; } 
+        .nav-link { color:#8b949e; text-align:center; cursor:pointer; flex:1; font-size:11px; } 
+        .nav-link.active { color:#00ffcc; font-weight:bold; } 
+        .nav-link i { display:block; font-size:22px; margin-bottom:3px; font-style:normal; }
+        
+        input { width:100%; padding:15px; border-radius:12px; border:1px solid #444; background:var(--card); color:var(--text); margin-bottom:15px; box-sizing:border-box; outline: none; }
+        #dl-btn { width:100%; padding:15px; background:var(--grad); border:none; color:#fff; font-weight:bold; border-radius:12px; cursor:pointer; }
+        
+        .action-btn { padding: 6px 12px; border-radius: 8px; border: none; font-size: 12px; cursor: pointer; margin-left: 5px; }
+        video { width: 100%; border-radius: 12px; margin-top: 10px; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+</head>
+<body id="app-body">
+
+<header>
+    <div class="brand-name"><span class="vidmate-download">📥</span> KR DOWNLOADER PRO</div>
+</header>
+
+<div id="home" class="page active-page">
+    <h3 id="h-title">ডাউনলোড শুরু করুন</h3>
+    <input type="text" id="url-input" placeholder="লিঙ্কটি এখানে দিন...">
+    <button id="dl-btn" onclick="startDownload()">ডাউনলোড</button>
+</div>
+
+<div id="dl-manager" class="page">
+    <h3 id="dl-title">চলমান ডাউনলোড</h3>
+    <div id="active-list"></div>
+</div>
+
+<div id="videos" class="page">
+    <h3 id="v-title">ফাইল ম্যানেজার</h3>
+    <div id="video-list"></div>
+</div>
+
+<div id="settings" class="page">
+    <h3 id="s-title">সেটিংস</h3>
+    <div class="setting-row" onclick="window.open('https://facebook.com')">
+        <div class="s-left"><div class="s-icon" style="background:#1877f2">FB</div><b id="txt-fb">ফেসবুক পেজ</b></div>
+    </div>
+    <div class="setting-row" onclick="toggleTheme()">
+        <div class="s-left"><div class="s-icon" style="background:var(--grad)">🌓</div><b id="txt-theme">থিম পরিবর্তন</b></div>
+    </div>
+    <div class="setting-row" onclick="toggleLang()">
+        <div class="s-left"><div class="s-icon" style="background:#ff9800">🌐</div><b><span id="lang-label">ভাষা: বাংলা</span></b></div>
+    </div>
+    <div class="setting-row" onclick="toggleMenu('net-menu')">
+        <div class="s-left"><div class="s-icon" style="background:#00ffcc">📡</div><b><span id="txt-net-label">নেটওয়ার্ক:</span> <span id="net-status">WiFi + Data</span></b></div>
+    </div>
+    <div id="net-menu" class="option-menu">
+        <div class="opt-item" onclick="setNet('WiFi Only')">WiFi Only</div>
+        <div class="opt-item" onclick="setNet('Mobile Data')">Mobile Data</div>
+        <div class="opt-item" onclick="setNet('WiFi + Data')">WiFi + Data</div>
+    </div>
+    <div class="setting-row" onclick="toggleMenu('rec-menu')">
+        <div class="s-left"><div class="s-icon" style="background:#e91e63">♻️</div><b id="txt-rec">রিকভার ফাইল</b></div>
+    </div>
+    <div id="rec-menu" class="option-menu"></div>
+    <div class="setting-row" onclick="clearCache()">
+        <div class="s-left"><div class="s-icon" style="background:#f44336">🧹</div><b id="txt-cache">ক্লিন ক্যাশে</b></div>
+        <div class="cache-red" id="c-size">৫.২৪ MB</div>
+    </div>
+</div>
+
+<nav>
+    <div class="nav-link active" onclick="tab('home', this)"><i id="n1">🏠</i><span id="txt-n1">হোম</span></div>
+    <div class="nav-link" onclick="tab('dl-manager', this)"><i id="n2">📥</i><span id="txt-n2">ডাউনলোড</span></div>
+    <div class="nav-link" onclick="tab('videos', this)"><i id="n3">🎬</i><span id="txt-n3">ভিডিও</span></div>
+    <div class="nav-link" onclick="tab('settings', this)"><i id="n4">⚙️</i><span id="txt-n4">সেটিংস</span></div>
+</nav>
+
+<script>
+let savedVids = JSON.parse(localStorage.getItem('kr_vids') || '[]');
+let recycleBin = JSON.parse(localStorage.getItem('kr_recycle') || '[]');
+let netConfig = localStorage.getItem('kr_net') || 'WiFi + Data';
+let currentLang = 'bn';
+
+document.getElementById('net-status').innerText = netConfig;
+
+function tab(id, el) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
+    document.getElementById(id).classList.add('active-page');
+    document.querySelectorAll('.nav-link').forEach(n => n.classList.remove('active'));
+    el.classList.add('active');
+}
+
+function toggleTheme() { document.getElementById('app-body').classList.toggle('light-mode'); }
+
+function toggleLang() {
+    const l = document.getElementById('lang-label');
+    currentLang = (currentLang === 'bn') ? 'en' : 'bn';
+    if(currentLang === 'en') {
+        l.innerText = "Language: English";
+        document.getElementById('h-title').innerText = "Start Download";
+        document.getElementById('url-input').placeholder = "Paste link here...";
+        document.getElementById('dl-btn').innerText = "Download";
+        document.getElementById('dl-title').innerText = "Active Downloads";
+        document.getElementById('v-title').innerText = "File Manager";
+        document.getElementById('s-title').innerText = "Settings";
+        document.getElementById('txt-fb').innerText = "Facebook Page";
+        document.getElementById('txt-theme').innerText = "Change Theme";
+        document.getElementById('txt-net-label').innerText = "Network:";
+        document.getElementById('txt-rec').innerText = "Recover Files";
+        document.getElementById('txt-cache').innerText = "Clear Cache";
+        document.getElementById('txt-n1').innerText = "Home";
+        document.getElementById('txt-n2').innerText = "Download";
+        document.getElementById('txt-n3').innerText = "Videos";
+        document.getElementById('txt-n4').innerText = "Settings";
+    } else {
+        l.innerText = "ভাষা: বাংলা";
+        document.getElementById('h-title').innerText = "ডাউনলোড শুরু করুন";
+        document.getElementById('url-input').placeholder = "লিঙ্কটি এখানে দিন...";
+        document.getElementById('dl-btn').innerText = "ডাউনলোড";
+        document.getElementById('dl-title').innerText = "চলমান ডাউনলোড";
+        document.getElementById('v-title').innerText = "ফাইল ম্যানেজার";
+        document.getElementById('s-title').innerText = "সেটিংস";
+        document.getElementById('txt-fb').innerText = "ফেসবুক পেজ";
+        document.getElementById('txt-theme').innerText = "থিম পরিবর্তন";
+        document.getElementById('txt-net-label').innerText = "নেটওয়ার্ক:";
+        document.getElementById('txt-rec').innerText = "রিকভার ফাইল";
+        document.getElementById('txt-cache').innerText = "ক্লিন ক্যাশে";
+        document.getElementById('txt-n1').innerText = "হোম";
+        document.getElementById('txt-n2').innerText = "ডাউনলোড";
+        document.getElementById('txt-n3').innerText = "ভিডিও";
+        document.getElementById('txt-n4').innerText = "সেটিংস";
+    }
+    renderVids(); renderRecycle();
+}
+
+function toggleMenu(id) {
+    const m = document.getElementById(id);
+    m.style.display = m.style.display === 'block' ? 'none' : 'block';
+}
+
+function setNet(mode) {
+    netConfig = mode;
+    localStorage.setItem('kr_net', mode);
+    document.getElementById('net-status').innerText = mode;
+    toggleMenu('net-menu');
+}
+
+function clearCache() {
+    if(confirm(currentLang === 'bn' ? "ক্যাশে পরিষ্কার করবেন?" : "Clear cache?")) {
+        document.getElementById('c-size').innerText = "0.00 MB";
+    }
+}
+
+// ** আপনার দেওয়া নতুন এবং উন্নত ডাউনলোড লজিক **
 async function startDownload() {
     const url = document.getElementById('url-input').value.trim();
     if(!url) return;
@@ -8,7 +200,7 @@ async function startDownload() {
         <div class="dl-card" id="item-${dlId}">
             <img src="https://via.placeholder.com/60/000/fff?text=KR" class="dl-thumb">
             <div class="dl-info">
-                <b id="st-${dlId}">প্রসেসিং হচ্ছে... (একটু সময় দিন)</b>
+                <b id="st-${dlId}">${currentLang === 'bn' ? 'প্রসেসিং হচ্ছে...' : 'Processing...'}</b>
                 <div class="prog-bg"><div class="prog-fill" id="bar-${dlId}" style="width:40%"></div></div>
             </div>
         </div>
@@ -18,13 +210,12 @@ async function startDownload() {
         const response = await fetch(`/download?url=${encodeURIComponent(url)}`);
         const result = await response.json();
 
-        // এপিআইভেদে ডাটার ফরম্যাট ভিন্ন হতে পারে, তাই সব চেক করা হচ্ছে
         const finalData = result.data || result;
         const videoUrl = finalData.url || (finalData.downloads && finalData.downloads[0].url);
 
         if (videoUrl) {
             document.getElementById(`bar-${dlId}`).style.width = "100%";
-            document.getElementById(`st-${dlId}`).innerText = "ডাউনলোড শুরু!";
+            document.getElementById(`st-${dlId}`).innerText = currentLang === 'bn' ? "ডাউনলোড শুরু!" : "Download Started!";
             
             const a = document.createElement('a');
             a.href = videoUrl;
@@ -33,9 +224,58 @@ async function startDownload() {
 
             savedVids.unshift({ id: dlId, name: finalData.title || "Video_" + dlId, time: new Date().toLocaleTimeString(), url: videoUrl });
             localStorage.setItem('kr_vids', JSON.stringify(savedVids));
-            renderVids();
+            setTimeout(() => {
+                document.getElementById(`item-${dlId}`).remove();
+                renderVids();
+            }, 1000);
         } else { throw new Error(); }
     } catch (e) {
-        document.getElementById(`st-${dlId}`).innerHTML = "<span style='color:red'>দুঃখিত, এই ভিডিওটির লিঙ্ক পাওয়া যায়নি!</span>";
+        document.getElementById(`st-${dlId}`).innerHTML = `<span style='color:red'>${currentLang === 'bn' ? 'দুঃখিত, ভিডিওটি পাওয়া যায়নি!' : 'Sorry, Video not found!'}</span>`;
     }
 }
+
+function renderVids() {
+    const container = document.getElementById('video-list');
+    let delBtn = currentLang === 'bn' ? 'মুছুন' : 'Delete';
+    container.innerHTML = savedVids.map(v => `
+        <div class="dl-card" style="display:block">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <b>${v.name}</b>
+                <button class="action-btn" style="background:none; color:red;" onclick="deleteToBin(${v.id})">${delBtn}</button>
+            </div>
+            <video controls src="${v.url}"></video>
+        </div>
+    `).join('');
+}
+
+function deleteToBin(id) {
+    if(confirm(currentLang === 'bn' ? 'মুছে ফেলবেন?' : 'Delete?')){
+        const vid = savedVids.find(v => v.id === id);
+        recycleBin.unshift(vid);
+        savedVids = savedVids.filter(v => v.id !== id);
+        localStorage.setItem('kr_vids', JSON.stringify(savedVids));
+        localStorage.setItem('kr_recycle', JSON.stringify(recycleBin));
+        renderVids(); renderRecycle();
+    }
+}
+
+function renderRecycle() {
+    const menu = document.getElementById('rec-menu');
+    let restoreBtn = currentLang === 'bn' ? 'উদ্ধার' : 'Restore';
+    menu.innerHTML = (recycleBin.length === 0) ? `<div class="opt-item">Empty</div>` : 
+    recycleBin.map(v => `<div class="opt-item"><span>${v.name}</span><button class="action-btn" style="background:#00ffcc; color:black;" onclick="restoreVid(${v.id})">${restoreBtn}</button></div>`).join('');
+}
+
+function restoreVid(id) {
+    const vid = recycleBin.find(v => v.id === id);
+    savedVids.unshift(vid);
+    recycleBin = recycleBin.filter(v => v.id !== id);
+    localStorage.setItem('kr_vids', JSON.stringify(savedVids));
+    localStorage.setItem('kr_recycle', JSON.stringify(recycleBin));
+    renderVids(); renderRecycle();
+}
+
+renderVids(); renderRecycle();
+</script>
+</body>
+</html>
