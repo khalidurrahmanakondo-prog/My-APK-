@@ -85,9 +85,18 @@ h1{font-size:24px;font-weight:800;overflow-wrap:anywhere}
   </div>
 
 </section>
-<div class="footer">© <span id="year"></span> KR Calculator A<br><span style="font-size:11px">ডোমেইন: <b id="domainShow"></b></span></div>
+<div class="footer">© <span id="year"></span> KR Calculator A<br><span style="font-size:11px">ডোমেইন: <b id="domainShow"></b> · সংস্করণ v5</span></div>
 </main>
 
+<script>
+setTimeout(function () {
+  if (!window.__krReady) {
+    var el = document.getElementById("loginStatus");
+    el.textContent = "Firebase স্ক্রিপ্ট লোড হয়নি। ইন্টারনেট চালু আছে কিনা এবং Chrome (Incognito ট্যাব) ব্যবহার করছেন কিনা দেখুন। অ্যাড-ব্লকার বা ডেটা সেভার বন্ধ করুন।";
+    el.className = "status show error";
+  }
+}, 5000);
+</script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut }
@@ -106,7 +115,10 @@ const firebaseConfig = {
   measurementId: "G-K4XGHWM4QF"
 };
 const HOSTED_URL = "https://kr-calculator-a-bc1e2.web.app";
+window.__krReady = true;
 const $ = id => document.getElementById(id);
+window.addEventListener("error", e => { status($("loginStatus"), "স্ক্রিপ্ট এরর: " + (e.message || "অজানা"), "error"); });
+window.addEventListener("unhandledrejection", e => { status($("loginStatus"), "এরর: " + (e.reason?.code || e.reason?.message || e.reason), "error"); });
 $("year").textContent = new Date().getFullYear();
 $("domainShow").textContent = location.hostname || location.protocol;
 
