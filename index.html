@@ -10,6 +10,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
     <style>
         :root {
             --green: #22c55e; --green-dark: #15803d; --red: #ef4444;
@@ -95,7 +96,7 @@
             </div>
             <h1 class="btitle">KR calculator A</h1>
             <h2 class="bsub" id="heading">লগইন / সাইন ইন</h2>
-            <p class="bdesc" id="desc">ইমেইল+পাসওয়ার্ড, UID+পাসওয়ার্ড, অথবা Google।</p>
+            <p class="bdesc" id="desc">ইমেইল+পাসওয়ার্ড, UID+পাসওয়ার্ড, অথবা Google।</p>
         </div>
 
         <div class="card">
@@ -110,23 +111,23 @@
                         </div>
                     </div>
                     <div class="ib">
-                        <label>পাসওয়ার্ড <span style="font-weight:400;color:#94a3b8;">(ঐচ্ছিক — না থাকলে খালি রাখুন)</span></label>
+                        <label>পাসওয়ার্ড <span style="font-weight:400;color:#94a3b8;">(ঐচ্ছিক — না থাকলে খালি রাখুন)</span></label>
                         <div class="iw">
                             <i class="fa-solid fa-lock"></i>
-                            <input type="password" id="lPass" class="has-eye" autocomplete="current-password" placeholder="পাসওয়ার্ড (সেট করা থাকলে)">
+                            <input type="password" id="lPass" class="has-eye" autocomplete="current-password" placeholder="পাসওয়ার্ড (সেট করা থাকলে)">
                             <button type="button" class="eye-btn" data-for="lPass"><i class="fa-regular fa-eye"></i></button>
                         </div>
-                        <small class="help">পাসওয়ার্ড সেট না থাকলে শুধু ইমেইল/UID দিয়ে লগইন যাবে। সেট থাকলে পাসওয়ার্ড লাগবে।</small>
+                        <small class="help">পাসওয়ার্ড সেট না থাকলে শুধু ইমেইল/UID দিয়ে লগইন যাবে। সেট থাকলে পাসওয়ার্ড লাগবে।</small>
                     </div>
                     <button type="submit" id="loginBtn" class="btn">লগইন করুন <i class="fa-solid fa-arrow-right-long"></i></button>
                 </form>
                 <div class="divider">অথবা</div>
                 <button type="button" id="btnGoogleLogin" class="btn google">
-                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt=""> Google দিয়ে চালিয়ে যান
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt=""> Google দিয়ে চালিয়ে যান
                 </button>
                 <div class="foot">
                     <p>নতুন অ্যাকাউন্ট? <a id="btnGoReg">রেজিস্ট্রেশন করুন</a></p>
-                    <p style="margin-top:8px;"><a id="btnGoForgot">Forget Password / পাসওয়ার্ড ভুলে গেছেন?</a></p>
+                    <p style="margin-top:8px;"><a id="btnGoForgot">Forget Password / পাসওয়ার্ড ভুলে গেছেন?</a></p>
                 </div>
             </div>
 
@@ -163,12 +164,12 @@
                             <input type="text" id="rUid" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off" placeholder="৮ সংখ্যা" required>
                             <button type="button" class="gbtn" id="btnGenUid"><i class="fa-solid fa-wand-magic-sparkles"></i> অটো</button>
                         </div>
-                        <div id="uidErr" class="err">* ০ দিয়ে শুরু করা যাবে না!</div>
+                        <div id="uidErr" class="err">* ০ দিয়ে শুরু করা যাবে না!</div>
                     </div>
                     <div class="ib">
-                        <label>পাসওয়ার্ড <span style="font-weight:400;color:#94a3b8;">(ঐচ্ছিক)</span></label>
+                        <label>পাসওয়ার্ড <span style="font-weight:400;color:#94a3b8;">(ঐচ্ছিক)</span></label>
                         <div class="iw"><i class="fa-solid fa-lock"></i>
-                            <input type="password" id="rPass" class="has-eye" autocomplete="new-password" placeholder="ঐচ্ছিক — পরে প্রোফাইল থেকেও সেট করা যায়" minlength="4">
+                            <input type="password" id="rPass" class="has-eye" autocomplete="new-password" placeholder="ঐচ্ছিক — পরে প্রোফাইল থেকেও সেট করা যায়" minlength="4">
                             <button type="button" class="eye-btn" data-for="rPass"><i class="fa-regular fa-eye"></i></button>
                         </div>
                     </div>
@@ -176,7 +177,7 @@
                 </form>
                 <div class="divider">অথবা</div>
                 <button type="button" id="btnGoogleReg" class="btn google">
-                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt=""> Google দিয়ে অ্যাকাউন্ট তৈরি
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt=""> Google দিয়ে অ্যাকাউন্ট তৈরি
                 </button>
                 <div class="foot"><p>অ্যাকাউন্ট আছে? <a id="btnGoLogin">লগইন করুন</a></p></div>
             </div>
@@ -184,7 +185,7 @@
             <!-- YEAR (Google birth year if needed) -->
             <div id="birthYear" class="panel">
                 <p style="font-size:13px;color:var(--muted);text-align:center;margin-bottom:12px;line-height:1.5;">
-                    Google অ্যাকাউন্টের জন্য জন্ম সাল নির্বাচন করুন (৫ বছরের নিচে অনুমোদিত নয়)।
+                    Google অ্যাকাউন্টের জন্য জন্ম সাল নির্বাচন করুন (৫ বছরের নিচে অনুমোদিত নয়)।
                 </p>
                 <div class="year-grid" id="gYearGrid"></div>
                 <div class="selected-year" id="gYearSelectedText"></div>
@@ -253,6 +254,8 @@ const GITHUB_LOGIN_URL = "https://khalidurrahmanakondo-prog.github.io/My-APK-/";
 const firebaseConfig = {
     apiKey: "AIzaSyDUrso1G3orSxiZGTQ1vNYnmN0jdnJ3nSM",
     authDomain: "kr-calculator-a-bc1e2.firebaseapp.com",
+    // ⚠️ Firebase Console → Realtime Database → উপরে যে URL দেখায় ঠিক সেটা বসান (রিজিয়ন আলাদা হলে URL আলাদা হয়)
+    databaseURL: "https://kr-calculator-a-bc1e2-default-rtdb.firebaseio.com",
     projectId: "kr-calculator-a-bc1e2",
     storageBucket: "kr-calculator-a-bc1e2.firebasestorage.app",
     messagingSenderId: "916522220428",
@@ -262,6 +265,8 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
+let rtdb = null;
+try { rtdb = firebase.database(); } catch (e) { console.warn("Realtime Database চালু হয়নি:", e && e.message); }
 
 const FIREBASE_COLLECTION_NAME = "KR pro math master";
 const APP_VERSION = "1.1.0.1";
@@ -296,10 +301,10 @@ function goPanel(id) {
     document.querySelectorAll(".panel").forEach(p => p.classList.remove("on"));
     const t = document.getElementById(id); if (t) t.classList.add("on");
     const map = {
-        login: ["লগইন / সাইন ইন", "ইমেইল+পাসওয়ার্ড, UID+পাসওয়ার্ড, বা Google।"],
+        login: ["লগইন / সাইন ইন", "ইমেইল+পাসওয়ার্ড, UID+পাসওয়ার্ড, বা Google।"],
         reg: ["নতুন অ্যাকাউন্ট", "নাম, ইমেইল, জন্ম সাল ও UID।"],
         verify: ["ভেরিফিকেশন", "৫ মিনিটের মধ্যে কোড দিন।"],
-        forgot: ["পাসওয়ার্ড পুনরুদ্ধার", "অ্যাকাউন্ট থাকলেই কোড যাবে।"],
+        forgot: ["পাসওয়ার্ড পুনরুদ্ধার", "অ্যাকাউন্ট থাকলেই কোড যাবে।"],
         birthYear: ["জন্ম সাল", "সাল নির্বাচন করুন।"],
         success: ["সফল!", "অ্যাপে ফিরে যান।"]
     };
@@ -318,7 +323,7 @@ function maskEmail(email) {
 function returnToApp() {
     try { if (window.opener) { window.opener.focus(); window.close(); return; } } catch(e){}
     try { window.close(); } catch(e){}
-    try { if (history.length > 1) history.back(); else toast("অ্যাপ খুলুন — লগইন সেভ হয়েছে।","info"); } catch(e){ toast("অ্যাপ খুলুন — লগইন সেভ হয়েছে।","info"); }
+    try { if (history.length > 1) history.back(); else toast("অ্যাপ খুলুন — লগইন সেভ হয়েছে।","info"); } catch(e){ toast("অ্যাপ খুলুন — লগইন সেভ হয়েছে।","info"); }
 }
 document.getElementById("btnReturnApp").addEventListener("click", returnToApp);
 
@@ -392,14 +397,15 @@ async function findUserByEmailOrUid(input) {
     }
     if (isEmail) {
         try {
-            const snap = await db.collectionGroup("Profile").where("email","==",val.toLowerCase()).limit(5).get();
+            const snap = await db.collectionGroup("Profile").where("email","==",val.toLowerCase()).limit(10).get();
             for (const doc of snap.docs) {
                 const p = doc.data() || {};
                 const parts = doc.ref.path.split("/");
                 const uidIdx = parts.indexOf("Users");
-                const colIdx = parts.indexOf(FIREBASE_COLLECTION_NAME);
-                const ver = (colIdx >= 0 && parts[colIdx+1]) ? parts[colIdx+1] : APP_VERSION;
-                const uid = p.uid || (uidIdx >= 0 ? parts[uidIdx+1] : null);
+                // নতুন কাঠামো (KR pro math master/{UID}/Profile) এখানে বাদ — শুধু ভার্সনযুক্ত পাথ থেকে ক্রেডিট/ঋণ আসে
+                if (uidIdx < 1) continue;
+                const ver = parts[uidIdx - 1];
+                const uid = p.uid || parts[uidIdx + 1];
                 if (!uid) continue;
                 p.uid = uid; p.email = p.email || val.toLowerCase();
                 return await packUser(userRef(uid, ver), p, ver);
@@ -482,10 +488,63 @@ async function saveNewUserToFirebase(userData) {
     }, { merge: true });
 }
 
-function finishLogin(userData, title) {
+/*
+ * ইউজারের নামে দুই জায়গায় কালেকশন — প্রতি ইউজারের জন্য মাত্র একবার (আগে থেকে থাকলে কিছুই লেখা হয় না)
+ *  ১) Firestore:  KR pro math master / {KR-UID} / Profile / user_Profile
+ *  ২) Realtime DB: KR pro math master / {KR-UID} / app_Credit   (প্রাথমিক ক্রেডিট)
+ */
+async function ensureUserCollections(userData) {
+    const p = userData && userData.user_profile;
+    const uid = p && p.uid;
+    if (!uid) return;
+    const result = { fs: false, rt: false };
+
+    // ১) Firestore — transaction: Profile না থাকলেই শুধু তৈরি
+    try {
+        const root = db.collection(FIREBASE_COLLECTION_NAME).doc(uid);
+        const profRef = root.collection("Profile").doc("user_Profile");
+        await db.runTransaction(async (tx) => {
+            const snap = await tx.get(profRef);
+            if (snap.exists) return;
+            const ts = firebase.firestore.FieldValue.serverTimestamp();
+            const prof = { ...p, uid, createdAt: ts };
+            delete prof.password_hash;
+            tx.set(root, { uid, app: FIREBASE_COLLECTION_NAME, createdAt: ts }, { merge: true });
+            tx.set(profRef, prof);
+        });
+        result.fs = true;
+    } catch (e) { console.warn("[KR] Firestore কালেকশন তৈরি হয়নি:", e && e.message); }
+
+    // ২) Realtime Database — transaction: node না থাকলেই শুধু তৈরি
+    try {
+        if (rtdb) {
+            const c = Number(userData.user_credit);
+            const credit = isNaN(c) ? 0 : c;
+            await rtdb.ref(FIREBASE_COLLECTION_NAME + "/" + uid).transaction((cur) => {
+                if (cur !== null) return;           // আগেই আছে → অপরিবর্তিত
+                return {
+                    uid: uid,
+                    app_Credit: { user_credit: credit, uid: uid, createdAt: Date.now() }
+                };
+            });
+            result.rt = true;
+        }
+    } catch (e) { console.warn("[KR] Realtime DB কালেকশন তৈরি হয়নি:", e && e.message); }
+    return result;
+}
+
+// অ্যাপকে জানানো: শুধু UID পাঠাই, বাকি তথ্য অ্যাপ নিজে Firebase থেকে আনে
+function notifyApp(userData) {
+    const msg = { type: "KR_LOGIN", uid: userData.user_profile.uid, ver: userData.version };
+    try { if (window.opener) window.opener.postMessage(msg, "*"); } catch(e){}
+    try { const bc = new BroadcastChannel("kr_auth"); bc.postMessage(msg); setTimeout(() => bc.close(), 2000); } catch(e){}
+    try { if (window.Android && window.Android.onLoginSuccess) window.Android.onLoginSuccess(JSON.stringify(msg)); } catch(e){}
+}
+
+async function finishLogin(userData, title) {
     userData.version = userData.foundVersion || userData.version || APP_VERSION;
     userData.app = FIREBASE_COLLECTION_NAME;
-    // পাসওয়ার্ড হ্যাশ ক্লায়েন্টে রাখি না
+    // পাসওয়ার্ড হ্যাশ ক্লায়েন্টে রাখি না
     if (userData.user_profile) {
         const copy = { ...userData.user_profile };
         delete copy.password_hash;
@@ -498,6 +557,11 @@ function finishLogin(userData, title) {
     document.getElementById("successMsg").textContent =
         "অ্যাপে ফিরে গেলে অটো লগইন হবে।\nUID: " + (userData.user_profile.uid || "");
     goPanel("success");
+    // ডাটাবেসে কালেকশন নিশ্চিত (সর্বোচ্চ ৬ সেকেন্ড অপেক্ষা — পেজ বন্ধ হওয়ার আগে লেখা শেষ হওয়ার জন্য)
+    try {
+        await Promise.race([ensureUserCollections(userData), new Promise(r => setTimeout(r, 6000))]);
+    } catch(e){}
+    notifyApp(userData);
     toast("সফল! অ্যাপে ফিরে যান।", "ok");
     setTimeout(() => { try { if (window.opener) { window.opener.focus(); window.close(); } } catch(e){} }, 1200);
 }
@@ -594,15 +658,15 @@ document.getElementById("regForm").addEventListener("submit", async (e) => {
     if (!birthYear) { toast("জন্ম সাল নির্বাচন করুন!", "err"); return; }
     if (ageFromYear(birthYear) < MIN_AGE) {
         await blockEmail(email, "underage_" + birthYear);
-        toast("৫ বছরের নিচে অ্যাকাউন্ট খোলা যাবে না। এই ইমেইল ব্লক করা হয়েছে।", "err");
+        toast("৫ বছরের নিচে অ্যাকাউন্ট খোলা যাবে না। এই ইমেইল ব্লক করা হয়েছে।", "err");
         return;
     }
     if (await isEmailBlocked(email)) { toast("এই ইমেইল ব্লক করা আছে।", "err"); return; }
     if (rawUid.length !== 8 || rawUid.startsWith("0")) {
         document.getElementById("uidErr").style.display = "block";
-        toast("UID ৮ সংখ্যা, ০ দিয়ে শুরু নয়!", "err"); return;
+        toast("UID ৮ সংখ্যা, ০ দিয়ে শুরু নয়!", "err"); return;
     }
-    if (pass && pass.length < 4) { toast("পাসওয়ার্ড কমপক্ষে ৪ অক্ষর!", "err"); return; }
+    if (pass && pass.length < 4) { toast("পাসওয়ার্ড কমপক্ষে ৪ অক্ষর!", "err"); return; }
     const uid = "KR-" + rawUid;
     const regBtn = document.getElementById("regBtn");
     setLoading(regBtn, true, "যাচাই...");
@@ -625,8 +689,8 @@ document.getElementById("regForm").addEventListener("submit", async (e) => {
         document.getElementById("vTokenDisplay").textContent = realTokenId;
         document.getElementById("vCodeInput").value = "";
         goPanel("verify");
-        toast("কোড পাঠানো হয়েছে!", "ok");
-    } catch(err) { console.error(err); toast("কোড পাঠানো যায়নি।", "err"); }
+        toast("কোড পাঠানো হয়েছে!", "ok");
+    } catch(err) { console.error(err); toast("কোড পাঠানো যায়নি।", "err"); }
     setLoading(regBtn, false);
 });
 
@@ -644,7 +708,7 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
         }
         const userData = await findUserByEmailOrUid(inputVal);
         if (!userData || !userData.user_profile?.uid) {
-            toast("অ্যাকাউন্ট পাওয়া যায়নি!", "err"); setLoading(loginBtn, false); return;
+            toast("অ্যাকাউন্ট পাওয়া যায়নি!", "err"); setLoading(loginBtn, false); return;
         }
         if (!(await checkPermission(userData))) {
             toast("অ্যাপ ব্যবহারের অনুমতি নেই। অ্যাডমিনের সাথে যোগাযোগ করুন।", "err");
@@ -656,15 +720,15 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
         }
         const storedHash = userData.user_profile.password_hash || null;
         if (storedHash) {
-            // পাসওয়ার্ড সেট আছে → অবশ্যই মিলাতে হবে
-            if (!pass) { toast("এই অ্যাকাউন্টে পাসওয়ার্ড সেট আছে। পাসওয়ার্ড দিন।", "err"); setLoading(loginBtn, false); return; }
+            // পাসওয়ার্ড সেট আছে → অবশ্যই মিলাতে হবে
+            if (!pass) { toast("এই অ্যাকাউন্টে পাসওয়ার্ড সেট আছে। পাসওয়ার্ড দিন।", "err"); setLoading(loginBtn, false); return; }
             const h = await hashPass(pass);
-            if (h !== storedHash) { toast("পাসওয়ার্ড ভুল!", "err"); setLoading(loginBtn, false); return; }
+            if (h !== storedHash) { toast("পাসওয়ার্ড ভুল!", "err"); setLoading(loginBtn, false); return; }
             finishLogin(userData, "লগইন সফল!");
         } else {
-            // পাসওয়ার্ড নেই → ইমেইল থাকলে কোড, নইলে সরাসরি
+            // পাসওয়ার্ড নেই → ইমেইল থাকলে কোড, নইলে সরাসরি
             if (pass) {
-                toast("এই অ্যাকাউন্টে এখনো পাসওয়ার্ড সেট নেই। খালি রেখে লগইন করুন বা প্রোফাইল থেকে সেট করুন।", "err");
+                toast("এই অ্যাকাউন্টে এখনো পাসওয়ার্ড সেট নেই। খালি রেখে লগইন করুন বা প্রোফাইল থেকে সেট করুন।", "err");
                 setLoading(loginBtn, false); return;
             }
             if (email && email.includes("@")) {
@@ -674,7 +738,7 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
                 document.getElementById("vTokenDisplay").textContent = realTokenId;
                 document.getElementById("vCodeInput").value = "";
                 goPanel("verify");
-                toast("ভেরিফিকেশন কোড পাঠানো হয়েছে!", "ok");
+                toast("ভেরিফিকেশন কোড পাঠানো হয়েছে!", "ok");
             } else {
                 finishLogin(userData, "লগইন সফল!");
             }
@@ -693,14 +757,14 @@ document.getElementById("forgotForm").addEventListener("submit", async (e) => {
     try {
         const userData = await findUserByEmailOrUid(inputVal);
         if (!userData || !userData.user_profile?.uid) {
-            toast("অ্যাকাউন্ট নেই — কোড পাঠানো হয়নি।", "err"); setLoading(forgotBtn, false); return;
+            toast("অ্যাকাউন্ট নেই — কোড পাঠানো হয়নি।", "err"); setLoading(forgotBtn, false); return;
         }
         if (!(await checkPermission(userData))) {
             toast("অনুমতি নেই।", "err"); setLoading(forgotBtn, false); return;
         }
         const email = userData.user_profile.email;
         if (!email || !email.includes("@")) {
-            toast("ইমেইল নেই — কোড যায় না।", "err"); setLoading(forgotBtn, false); return;
+            toast("ইমেইল নেই — কোড যায় না।", "err"); setLoading(forgotBtn, false); return;
         }
         pending = userData; pending.isNewAccount = false; verifyMode = "forgot";
         await sendVerifyEmail(userData.user_profile.name || "User", email, userData.user_profile.uid);
@@ -708,7 +772,7 @@ document.getElementById("forgotForm").addEventListener("submit", async (e) => {
         document.getElementById("vTokenDisplay").textContent = realTokenId;
         document.getElementById("vCodeInput").value = "";
         goPanel("verify");
-        toast("কোড পাঠানো হয়েছে!", "ok");
+        toast("কোড পাঠানো হয়েছে!", "ok");
     } catch(err) { toast("ব্যর্থ।", "err"); }
     setLoading(forgotBtn, false);
 });
@@ -717,7 +781,7 @@ document.getElementById("forgotForm").addEventListener("submit", async (e) => {
 document.getElementById("verifyForm").addEventListener("submit", async (e) => {
     e.preventDefault();
     const code = document.getElementById("vCodeInput").value.trim();
-    if (Date.now() > codeExpireTime || !realVerifyCode) { toast("কোডের মেয়াদ শেষ!", "err"); return; }
+    if (Date.now() > codeExpireTime || !realVerifyCode) { toast("কোডের মেয়াদ শেষ!", "err"); return; }
     if (code !== realVerifyCode) { toast("কোড ভুল!", "err"); return; }
     if (!pending) { toast("সেশন শেষ।", "err"); goPanel("login"); return; }
     const verifyBtn = document.getElementById("verifyBtn");
@@ -725,7 +789,7 @@ document.getElementById("verifyForm").addEventListener("submit", async (e) => {
     try {
         if (pending.isNewAccount) {
             await saveNewUserToFirebase(pending);
-            finishLogin(pending, "অ্যাকাউন্ট তৈরি হয়েছে!");
+            finishLogin(pending, "অ্যাকাউন্ট তৈরি হয়েছে!");
         } else if (verifyMode === "forgot") {
             // forgot: clear password so they can set new from app, or login
             try {
@@ -734,7 +798,7 @@ document.getElementById("verifyForm").addEventListener("submit", async (e) => {
                 await userRef(uid, ver).collection("Profile").doc("user_Profile").set({ password_hash: null }, { merge: true });
                 pending.user_profile.password_hash = null;
             } catch(e){}
-            finishLogin(pending, "পুনরুদ্ধার সফল! প্রোফাইল থেকে নতুন পাসওয়ার্ড সেট করুন।");
+            finishLogin(pending, "পুনরুদ্ধার সফল! প্রোফাইল থেকে নতুন পাসওয়ার্ড সেট করুন।");
         } else {
             finishLogin(pending, "লগইন সফল!");
         }
@@ -794,13 +858,13 @@ function googleAuthErrorMessage(err) {
     const code = err && err.code ? String(err.code) : "";
     const { host, origin } = currentAuthOriginInfo();
     if (code === "auth/unauthorized-domain") {
-        return "ডোমেইন অনুমোদিত নয় → " + host +
+        return "ডোমেইন অনুমোদিত নয় → " + host +
             " | Firebase Authorized domains + Google Cloud OAuth-এ এই host যোগ করুন। origin=" + origin;
     }
     if (code === "auth/operation-not-allowed") return "Firebase → Authentication → Google Sign-In চালু করুন।";
     if (code === "auth/popup-closed-by-user") return "পপআপ বন্ধ। আবার চেষ্টা করুন।";
     if (code === "auth/popup-blocked") return "পপআপ ব্লক। ব্রাউজারে অনুমতি দিন।";
-    if (code === "auth/network-request-failed") return "নেটওয়ার্ক সমস্যা।";
+    if (code === "auth/network-request-failed") return "নেটওয়ার্ক সমস্যা।";
     return "Google ব্যর্থ: " + (err.message || code || "error") + " [" + host + "]";
 }
 
@@ -857,7 +921,7 @@ document.getElementById("btnConfirmGYear").addEventListener("click", async () =>
     const { email, name, photo } = pendingGoogle;
     if (ageFromYear(gSelectedYear) < MIN_AGE) {
         if (email) await blockEmail(email, "underage_" + gSelectedYear);
-        toast("৫ বছরের নিচে অ্যাকাউন্ট নয়। ইমেইল ব্লক।", "err");
+        toast("৫ বছরের নিচে অ্যাকাউন্ট নয়। ইমেইল ব্লক।", "err");
         pendingGoogle = null; goPanel("login"); return;
     }
     const btn = document.getElementById("btnConfirmGYear");
@@ -876,7 +940,7 @@ document.getElementById("btnConfirmGYear").addEventListener("click", async () =>
         };
         await saveNewUserToFirebase(userData);
         pendingGoogle = null;
-        finishLogin(userData, "Google অ্যাকাউন্ট তৈরি হয়েছে!");
+        finishLogin(userData, "Google অ্যাকাউন্ট তৈরি হয়েছে!");
     } catch(err) { console.error(err); toast("তৈরি ব্যর্থ।", "err"); }
     setLoading(btn, false);
 });
@@ -887,7 +951,7 @@ async function handleGoogleRedirectResult() {
         const result = await auth.getRedirectResult();
         if (result && result.user) {
             try { sessionStorage.removeItem("kr_google_pending"); } catch (e) {}
-            toast("Google অ্যাকাউন্ট সিলেক্ট হয়েছে…", "info");
+            toast("Google অ্যাকাউন্ট সিলেক্ট হয়েছে…", "info");
             await processGoogleUser(result.user);
             return true;
         }
