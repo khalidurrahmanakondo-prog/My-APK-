@@ -46,6 +46,18 @@ h1{font-size:24px;font-weight:800;overflow-wrap:anywhere}
 .google-button:disabled{opacity:.85;cursor:wait}
 .loader{width:20px;height:20px;border:3px solid #cad9ff;border-top-color:#1769ff;border-radius:50%;animation:spin .6s linear infinite;flex-shrink:0}
 @keyframes spin{to{transform:rotate(360deg)}}
+.or{margin:18px 0 10px;color:#8994a8;font-size:12px}
+.tabs{display:flex;gap:8px}
+.tab,.secondary{flex:1;padding:12px;border:1px solid #dce2ec;border-radius:13px;background:#fff;color:#2458a6;font-weight:700;font-size:14px}
+.panel{margin-top:12px;text-align:left}
+.panel input{width:100%;padding:13px;margin-bottom:10px;border:1px solid #dce2ec;border-radius:12px;font-size:15px;background:#fafbff}
+.primary{width:100%;padding:13px;margin-bottom:10px;border:0;border-radius:13px;background:var(--blue);color:#fff;font-weight:700;font-size:15px}
+.panel .secondary{width:100%;margin-bottom:6px}
+.linkbtn{background:none;border:0;color:#2458a6;font-size:13px;padding:8px;width:100%}
+button:disabled{opacity:.8;cursor:wait}
+.spin::before{content:"";display:inline-block;width:14px;height:14px;margin-right:8px;vertical-align:-2px;border:2px solid #cad9ff;border-top-color:#1769ff;border-radius:50%;animation:spin .6s linear infinite}
+.primary.spin::before{border-color:#ffffff66;border-top-color:#fff}
+.verified.warn{color:#8b5500;background:#fff6df}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -67,6 +79,27 @@ h1{font-size:24px;font-weight:800;overflow-wrap:anywhere}
       </svg>
       <span id="btnText">Google দিয়ে চালিয়ে যান</span>
     </button>
+    <div class="or">অথবা</div>
+    <div class="tabs">
+      <button type="button" class="tab" data-p="emailPanel">ইমেইল</button>
+      <button type="button" class="tab" data-p="phonePanel">ফোন নম্বর</button>
+    </div>
+    <div id="emailPanel" class="panel" hidden>
+      <input id="emailIn" type="email" placeholder="ইমেইল" autocomplete="email">
+      <input id="passIn" type="password" placeholder="পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)" autocomplete="current-password">
+      <button type="button" id="emailLogin" class="primary">লগইন</button>
+      <button type="button" id="emailSignup" class="secondary">নতুন অ্যাকাউন্ট খুলুন</button>
+      <button type="button" id="forgotBtn" class="linkbtn">পাসওয়ার্ড ভুলে গেছেন?</button>
+    </div>
+    <div id="phonePanel" class="panel" hidden>
+      <input id="phoneIn" type="tel" placeholder="ফোন নম্বর, যেমন 01XXXXXXXXX">
+      <button type="button" id="sendCode" class="primary">কোড পাঠান</button>
+      <div id="codeBox" hidden>
+        <input id="codeIn" type="text" inputmode="numeric" maxlength="6" placeholder="৬ সংখ্যার কোড">
+        <button type="button" id="verifyCode" class="primary">যাচাই করুন</button>
+      </div>
+      <div id="recaptcha"></div>
+    </div>
     <div id="loginStatus" class="status" role="status"></div>
     <p class="privacy">🔒 আপনার প্রোফাইল Firebase-এ সংরক্ষিত হবে।</p>
   </div>
@@ -74,18 +107,22 @@ h1{font-size:24px;font-weight:800;overflow-wrap:anywhere}
   <div id="profileSection" class="profile">
     <img id="profilePhoto" class="photo" alt="প্রোফাইল ছবি" hidden>
     <h1 id="profileName">ব্যবহারকারী</h1>
-    <div class="verified">✓ সফলভাবে লগইন হয়েছে</div>
+    <div id="verBadge" class="verified">✓ সফলভাবে লগইন হয়েছে</div>
     <div class="code"><small>আপনার ৮ সংখ্যার আইডি</small><b id="userCode">--------</b></div>
     <div class="info">
       <div class="row"><span class="label">নাম</span><div class="value" id="userName">—</div></div>
-      <div class="row"><span class="label">ইমেইল</span><div class="value" id="userEmail">—</div></div>
+      <div class="row"><span class="label">ইমেইল / ফোন</span><div class="value" id="userEmail">—</div></div>
+    </div>
+    <div id="verifyBox" class="panel" hidden>
+      <button type="button" id="sendVerify" class="secondary">ইমেইল ভেরিফিকেশন পাঠান</button>
+      <button type="button" id="checkVerify" class="secondary">যাচাই করেছি, রিফ্রেশ করুন</button>
     </div>
     <div id="profileStatus" class="status" role="status"></div>
     <button id="logoutButton" type="button" class="logout">লগআউট করুন</button>
   </div>
 
 </section>
-<div class="footer">© <span id="year"></span> KR Calculator A<br><span style="font-size:11px">ডোমেইন: <b id="domainShow"></b> · সংস্করণ v5</span></div>
+<div class="footer">© <span id="year"></span> KR Calculator A<br><span style="font-size:11px">ডোমেইন: <b id="domainShow"></b> · সংস্করণ v6</span></div>
 </main>
 
 <script>
@@ -99,7 +136,9 @@ setTimeout(function () {
 </script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut }
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut,
+  createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, sendPasswordResetEmail,
+  RecaptchaVerifier, signInWithPhoneNumber }
   from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
 import { getDatabase, ref, get, update, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/11.10.0/firebase-database.js";
@@ -141,10 +180,14 @@ function showLogin() {
 function showProfile(user) {
   $("loginSection").hidden = true;
   $("profileSection").classList.add("active");
-  const name = user.displayName || "ব্যবহারকারী";
+  const name = user.displayName || (user.email ? user.email.split("@")[0] : "") || user.phoneNumber || "ব্যবহারকারী";
   $("profileName").textContent = name;
   $("userName").textContent = name;
-  $("userEmail").textContent = user.email || "ইমেইল পাওয়া যায়নি";
+  $("userEmail").textContent = user.email || user.phoneNumber || "পাওয়া যায়নি";
+  const needVerify = user.providerData.some(x => x.providerId === "password") && !user.emailVerified;
+  $("verifyBox").hidden = !needVerify;
+  $("verBadge").textContent = needVerify ? "⚠ ইমেইল যাচাই বাকি" : "✓ সফলভাবে লগইন হয়েছে";
+  $("verBadge").className = "verified" + (needVerify ? " warn" : "");
   $("userCode").textContent = code8(user.uid);
   const img = $("profilePhoto");
   if (user.photoURL) {
@@ -163,9 +206,10 @@ async function saveProfile(user) {
       uid: user.uid,
       name: user.displayName || "",
       email: user.email || "",
+      phone: user.phoneNumber || "",
       photoURL: user.photoURL || "",
       userCode: code8(user.uid),
-      provider: "google.com",
+      provider: user.providerData[0]?.providerId || "unknown",
       lastLoginAt: serverTimestamp()
     };
     if (!snap.exists()) data.createdAt = serverTimestamp();
@@ -249,6 +293,103 @@ if (!okProtocol) {
     showProfile(user);          // সাথে সাথে দেখাবে
     saveProfile(user);          // পেছনে সেভ হবে
   });
+
+  /* ---- ইমেইল / ফোন / ভেরিফিকেশন ---- */
+  const EMSG = {
+    "auth/invalid-credential": "ইমেইল বা পাসওয়ার্ড ভুল।",
+    "auth/invalid-email": "ইমেইল ঠিকানা সঠিক নয়।",
+    "auth/missing-password": "পাসওয়ার্ড লিখুন।",
+    "auth/email-already-in-use": "এই ইমেইলে আগেই অ্যাকাউন্ট আছে। লগইন করুন।",
+    "auth/weak-password": "পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের দিন।",
+    "auth/invalid-phone-number": "ফোন নম্বর সঠিক নয়। যেমন: 01XXXXXXXXX বা +8801XXXXXXXXX",
+    "auth/invalid-verification-code": "কোড ভুল। আবার দিন।",
+    "auth/code-expired": "কোডের সময় শেষ। নতুন কোড পাঠান।",
+    "auth/too-many-requests": "অনেকবার চেষ্টা হয়েছে। কিছুক্ষণ পরে চেষ্টা করুন।",
+    "auth/operation-not-allowed": "Firebase Console → Authentication → Sign-in method-এ এই পদ্ধতি চালু করুন।",
+    "auth/billing-not-enabled": "ফোন কোডের জন্য Firebase প্রজেক্টে বিলিং প্ল্যান (Blaze) লাগবে।",
+    "auth/network-request-failed": "ইন্টারনেট সংযোগ পরীক্ষা করুন।",
+    "app/timeout": "সময় শেষ। আবার চেষ্টা করুন।"
+  };
+  const showErr = (e, el = $("loginStatus")) => status(el, EMSG[e?.code] || ("এরর: " + (e?.code || e?.message || e)), "error");
+
+  /* বাটনে লোডিং আইকন; সর্বোচ্চ ২০ সেকেন্ড, এরপর নিজেই খুলে যাবে */
+  async function run(btn, label, fn, el = $("loginStatus")) {
+    if (btn.disabled) return;
+    const old = btn.textContent;
+    btn.disabled = true; btn.textContent = label; btn.classList.add("spin");
+    clearStatus(el);
+    try {
+      await Promise.race([fn(), new Promise((_, rej) => setTimeout(() => rej({ code: "app/timeout" }), 20000))]);
+    } catch (e) { showErr(e, el); }
+    finally { btn.disabled = false; btn.textContent = old; btn.classList.remove("spin"); }
+  }
+
+  document.querySelectorAll(".tab").forEach(b => b.addEventListener("click", () => {
+    const p = $(b.dataset.p), open = p.hidden;
+    ["emailPanel", "phonePanel"].forEach(id => { $(id).hidden = true; });
+    p.hidden = !open;
+  }));
+
+  const creds = () => {
+    const em = $("emailIn").value.trim(), pw = $("passIn").value;
+    if (!em) throw { code: "auth/invalid-email" };
+    return [em, pw];
+  };
+
+  $("emailLogin").addEventListener("click", () => run($("emailLogin"), "লগইন হচ্ছে...", async () => {
+    const [em, pw] = creds();
+    if (!pw) throw { code: "auth/missing-password" };
+    await signInWithEmailAndPassword(auth, em, pw);
+  }));
+
+  $("emailSignup").addEventListener("click", () => run($("emailSignup"), "তৈরি হচ্ছে...", async () => {
+    const [em, pw] = creds();
+    const cred = await createUserWithEmailAndPassword(auth, em, pw);
+    try {
+      await sendEmailVerification(cred.user);
+      status($("profileStatus"), "ভেরিফিকেশন ইমেইল পাঠানো হয়েছে। ইনবক্স বা স্প্যাম ফোল্ডার দেখে লিংকে চাপুন।", "success");
+    } catch (e) { showErr(e, $("profileStatus")); }
+  }));
+
+  $("forgotBtn").addEventListener("click", () => run($("forgotBtn"), "পাঠানো হচ্ছে...", async () => {
+    const em = $("emailIn").value.trim();
+    if (!em) throw { code: "auth/invalid-email" };
+    await sendPasswordResetEmail(auth, em);
+    status($("loginStatus"), "পাসওয়ার্ড রিসেটের লিংক ইমেইলে পাঠানো হয়েছে। স্প্যাম ফোল্ডারও দেখুন।", "success");
+  }));
+
+  $("sendVerify").addEventListener("click", () => run($("sendVerify"), "পাঠানো হচ্ছে...", async () => {
+    await sendEmailVerification(auth.currentUser);
+    status($("profileStatus"), "ভেরিফিকেশন ইমেইল পাঠানো হয়েছে। লিংকে চাপার পর নিচের রিফ্রেশ বাটন চাপুন।", "success");
+  }, $("profileStatus")));
+
+  $("checkVerify").addEventListener("click", () => run($("checkVerify"), "দেখা হচ্ছে...", async () => {
+    await auth.currentUser.reload();
+    showProfile(auth.currentUser);
+    status($("profileStatus"), auth.currentUser.emailVerified ? "ইমেইল যাচাই সম্পন্ন।" : "এখনো যাচাই হয়নি। ইমেইলের লিংকে চাপুন।", auth.currentUser.emailVerified ? "success" : "warning");
+  }, $("profileStatus")));
+
+  let confirmation = null, recaptcha = null;
+  $("sendCode").addEventListener("click", () => run($("sendCode"), "কোড পাঠানো হচ্ছে...", async () => {
+    let n = $("phoneIn").value.replace(/[\s-]/g, "");
+    if (/^01\d{9}$/.test(n)) n = "+88" + n;
+    if (!/^\+\d{10,15}$/.test(n)) throw { code: "auth/invalid-phone-number" };
+    try {
+      if (!recaptcha) recaptcha = new RecaptchaVerifier(auth, "recaptcha", { size: "invisible" });
+      confirmation = await signInWithPhoneNumber(auth, n, recaptcha);
+      $("codeBox").hidden = false;
+      status($("loginStatus"), "SMS-এ কোড পাঠানো হয়েছে। নিচে কোডটি দিন।", "success");
+    } catch (e) {
+      try { recaptcha?.clear(); } catch (_) {}
+      recaptcha = null;
+      throw e;
+    }
+  }));
+
+  $("verifyCode").addEventListener("click", () => run($("verifyCode"), "যাচাই হচ্ছে...", async () => {
+    if (!confirmation) throw { code: "auth/code-expired" };
+    await confirmation.confirm($("codeIn").value.trim());
+  }));
 
   getRedirectResult(auth).catch(() => {});
 }
