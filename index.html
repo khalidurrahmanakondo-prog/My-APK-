@@ -304,6 +304,7 @@ async function writeLoginSession(userData) {
         uid: uid,
         ver: ver,
         name: userData.user_profile.name || "",
+        email: String(userData.user_profile.email || "").toLowerCase().trim(),
         at: firebase.firestore.FieldValue.serverTimestamp(),
         expiresAt: Date.now() + 15 * 60 * 1000
     };
@@ -523,10 +524,60 @@ async function generateUniqueUid() {
     return "KR-" + String(Date.now()).slice(-8);
 }
 
+function emailIndexKey(email) {
+    return String(email || "").toLowerCase().trim().replace(/[.#$[\]]/g, "_");
+}
+function emailIndexRef(email) {
+    return db.collection(FIREBASE_COLLECTION_NAME).doc(APP_VERSION).collection("EmailIndex").doc(emailIndexKey(email));
+}
+/** প্রতি ইমেইল = এক UID। ইমেইল ইনডেক্স + প্রোফাইলে ইমেইল লিখে রাখে। */
+async function bindEmailToUid(email, uid, extra) {
+    email = String(email || "").toLowerCase().trim();
+    if (!email || !email.includes("@") || !uid) return false;
+    try {
+        const idx = await emailIndexRef(email).get();
+        if (idx.exists) {
+            const owned = idx.data().uid;
+            if (owned && owned !== uid) return false;
+        }
+        await emailIndexRef(email).set({
+            email, uid,
+            at: firebase.firestore.FieldValue.serverTimestamp(),
+            ...(extra || {})
+        }, { merge: true });
+        const uref = db.collection(FIREBASE_COLLECTION_NAME).doc(uid);
+        await uref.collection("Profile").doc("user_Profile").set({
+            email, uid, updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+        await uref.collection("Permission").doc("app_Permission").set({
+            email, uid, updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+        return true;
+    } catch (e) {
+        console.warn("[KR] bindEmailToUid:", e && e.message);
+        return false;
+    }
+}
+async function getUidByEmail(email) {
+    email = String(email || "").toLowerCase().trim();
+    if (!email || !email.includes("@")) return null;
+    try {
+        const s = await emailIndexRef(email).get();
+        if (s.exists && s.data().uid) return s.data().uid;
+    } catch (e) {}
+    return null;
+}
+
 async function saveNewUserToFirebase(userData) {
     const uid = userData.user_profile.uid;
     const ver = APP_VERSION;
-    // সরাসরি UID ডক — ভার্সন ডকের নিচে Users নয়
+    const email = String(userData.user_profile.email || "").toLowerCase().trim();
+    if (email) {
+        const existingUid = await getUidByEmail(email);
+        if (existingUid && existingUid !== uid) {
+            throw new Error("এই ইমেইলে ইতিমধ্যে অন্য অ্যাকাউন্ট আছে");
+        }
+    }
     const uref = db.collection(FIREBASE_COLLECTION_NAME).doc(uid);
     const ts = firebase.firestore.FieldValue.serverTimestamp();
     await uref.set({
@@ -534,6 +585,7 @@ async function saveNewUserToFirebase(userData) {
         avatar: userData.avatar || null, isCircle: userData.isCircle ?? false, updatedAt: ts
     }, { merge: true });
     const prof = { ...userData.user_profile, uid, version: ver, app_permission: true };
+    if (email) prof.email = email;
     await uref.collection("Profile").doc("user_Profile").set(prof, { merge: true });
     await uref.collection("Credit").doc("app_Credit").set({
         user_credit: userData.user_credit != null ? userData.user_credit : INITIAL_NEW_USER_CREDITS,
@@ -543,9 +595,10 @@ async function saveNewUserToFirebase(userData) {
         debt_credit: 0, max_debt: MAX_DEBT_CREDIT, uid, version: ver, updatedAt: ts
     }, { merge: true });
     await uref.collection("Permission").doc("app_Permission").set({
-        allowed: true, uid, email: userData.user_profile.email || "",
+        allowed: true, uid, email: email || "",
         version: ver, updatedAt: ts
     }, { merge: true });
+    if (email) await bindEmailToUid(email, uid, { name: userData.user_profile.name || "" });
 }
 
 /*
@@ -607,26 +660,35 @@ async function finishLogin(userData, title) {
     if (userData.user_profile) {
         const copy = { ...userData.user_profile };
         delete copy.password_hash;
+        if (copy.email) copy.email = String(copy.email).toLowerCase().trim();
         userData.user_profile = copy;
     }
+    // ইমেইল থাকলে প্রোফাইল + EmailIndex-এ জোর করে সেভ (প্রতি ইমেইল = এক UID)
+    try {
+        const em = userData.user_profile && userData.user_profile.email;
+        const uid = userData.user_profile && userData.user_profile.uid;
+        if (em && em.includes("@") && uid) {
+            await bindEmailToUid(em, uid, { name: userData.user_profile.name || "" });
+        }
+    } catch (e) {}
     PortalStorage.setCur(userData);
     PortalStorage.addSavedAccount(userData);
     try { localStorage.setItem("kr_user_uid", userData.user_profile.uid); } catch(e){}
     const uidShow = userData.user_profile.uid || "";
     const nameShow = userData.user_profile.name || "";
+    const emailShow = userData.user_profile.email || "";
     document.getElementById("successTitle").textContent = title || "লগইন সফল!";
     document.getElementById("successMsg").textContent =
         (nameShow ? ("নাম: " + nameShow + "\n") : "") +
-        "UID: " + uidShow + "\n\nনিচের বাটনে চাপুন → অ্যাপে ফিরে যান।\nঅ্যাপ নিজেই নাম, ছবি ও ক্রেডিট সিঙ্ক করবে।";
+        (emailShow ? ("ইমেইল: " + emailShow + "\n") : "") +
+        "UID: " + uidShow + "\n\nনিচের বাটনে চাপুন → অ্যাপে ফিরে যান।\nঅ্যাপ নিজেই নাম, ইমেইল, ছবি ও ক্রেডিট সিঙ্ক করবে।";
     goPanel("success");
     try {
         await Promise.race([ensureUserCollections(userData), new Promise(r => setTimeout(r, 6000))]);
     } catch(e){}
-    // সেশন আগে লিখি যাতে অ্যাপ অটো লগইন পায়
     try { await Promise.race([writeLoginSession(userData), new Promise(r => setTimeout(r, 5000))]); } catch(e){}
     notifyApp(userData);
     toast("সফল! অ্যাপে ফিরে যান — প্রোফাইল অটো আসবে।", "ok");
-    // অটো ক্লোজ/রিস্টার্ট নয় — ইউজার নিজে «অ্যাপে ফিরে যান» চাপবে
 }
 
 let pending = null, realVerifyCode = "", realTokenId = "", codeExpireTime = 0, verifyMode = "reg";
@@ -769,13 +831,26 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
         if (inputVal.includes("@") && await isEmailBlocked(inputVal.toLowerCase())) {
             toast("এই ইমেইল ব্লক করা আছে।", "err"); setLoading(loginBtn, false); return;
         }
-        const userData = await findUserByEmailOrUid(inputVal);
+        let userData = await findUserByEmailOrUid(inputVal);
+        // ইমেইল ইনডেক্স দিয়েও খোঁজা (প্রতি ইমেইল = এক UID)
+        if ((!userData || !userData.user_profile?.uid) && inputVal.includes("@")) {
+            try {
+                const mapped = await getUidByEmail(inputVal.toLowerCase());
+                if (mapped) userData = await findUserByEmailOrUid(mapped);
+            } catch (e) {}
+        }
         if (!userData || !userData.user_profile?.uid) {
             toast("অ্যাকাউন্ট পাওয়া যায়নি!", "err"); setLoading(loginBtn, false); return;
         }
         if (!(await checkPermission(userData))) {
             toast("অ্যাপ ব্যবহারের অনুমতি নেই। অ্যাডমিনের সাথে যোগাযোগ করুন।", "err");
             setLoading(loginBtn, false); return;
+        }
+        // ইমেইল দিয়ে লগইন করলে প্রোফাইলে ইমেইল সেট/আপডেট
+        if (inputVal.includes("@")) {
+            const typedEmail = inputVal.toLowerCase().trim();
+            userData.user_profile.email = typedEmail;
+            try { await bindEmailToUid(typedEmail, userData.user_profile.uid, { name: userData.user_profile.name || "" }); } catch (e) {}
         }
         const email = (userData.user_profile.email || "").toLowerCase();
         if (email && await isEmailBlocked(email)) {
@@ -896,9 +971,20 @@ async function processGoogleUser(gUser) {
     if (email && await isEmailBlocked(email)) { toast("এই ইমেইল ব্লক।", "err"); return; }
 
     let existing = email ? await findUserByEmailOrUid(email) : null;
+    if (!existing && email) {
+        try {
+            const mappedUid = await getUidByEmail(email);
+            if (mappedUid) existing = await findUserByEmailOrUid(mappedUid);
+        } catch (e) {}
+    }
     if (existing && existing.user_profile?.uid) {
         if (!(await checkPermission(existing))) { toast("অনুমতি নেই।", "err"); return; }
         if (photo && !existing.avatar) existing.avatar = photo;
+        // ইমেইল প্রোফাইলে না থাকলে Google ইমেইল সেট করো
+        if (email && (!existing.user_profile.email || !String(existing.user_profile.email).includes("@"))) {
+            existing.user_profile.email = email;
+        }
+        try { await bindEmailToUid(email, existing.user_profile.uid, { name: existing.user_profile.name || name }); } catch (e) {}
         finishLogin(existing, "Google লগইন সফল!");
         return;
     }
