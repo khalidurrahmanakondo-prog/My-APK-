@@ -291,20 +291,33 @@ const PortalStorage = {
     cur: () => { try { return JSON.parse(localStorage.getItem("kr_cur_user") || "null"); } catch(e){ return null; } }
 };
 
-/* অ্যাপ লগইন পেজ খোলার সময় ?sid=... দেয়। লগইন সফল হলে Firebase-এ সেই সেশনে UID লিখি — অ্যাপ সেটা দেখে নিজে লগইন করে। */
+/* অ্যাপ ?sid=... দিয়ে খোলে। লগইন সফল হলে Firebase LoginSessions-এ UID লিখি — অ্যাপ অটো সিঙ্ক করে।
+   শুধু UID ম্যানুয়াল লগইন নয়; সেশন দিয়েই ডেটা সিঙ্ক (নাম/ছবি/ক্রেডিট অ্যাপ Firebase থেকে আনে)। */
 const KR_SID = (function() {
     try { const v = new URLSearchParams(location.search).get("sid"); return /^[a-f0-9]{16,64}$/i.test(v || "") ? v : null; } catch (e) { return null; }
 })();
 async function writeLoginSession(userData) {
-    if (!KR_SID || !userData || !userData.user_profile || !userData.user_profile.uid) return;
+    if (!userData || !userData.user_profile || !userData.user_profile.uid) return false;
+    const uid = String(userData.user_profile.uid);
+    const ver = userData.foundVersion || userData.version || APP_VERSION;
+    const payload = {
+        uid: uid,
+        ver: ver,
+        name: userData.user_profile.name || "",
+        at: firebase.firestore.FieldValue.serverTimestamp(),
+        expiresAt: Date.now() + 15 * 60 * 1000
+    };
+    let ok = false;
+    if (KR_SID) {
+        try {
+            await db.collection(FIREBASE_COLLECTION_NAME).doc(APP_VERSION).collection("LoginSessions").doc(KR_SID).set(payload, { merge: true });
+            ok = true;
+        } catch (e) { console.warn("[KR] LoginSession লেখা যায়নি:", e && e.message); }
+    }
     try {
-        await db.collection(FIREBASE_COLLECTION_NAME).doc(APP_VERSION).collection("LoginSessions").doc(KR_SID).set({
-            uid: userData.user_profile.uid,
-            ver: userData.foundVersion || userData.version || APP_VERSION,
-            at: firebase.firestore.FieldValue.serverTimestamp(),
-            expiresAt: Date.now() + 15 * 60 * 1000
-        });
-    } catch (e) { console.warn("[KR] লগইন সেশন লেখা যায়নি:", e && e.message); }
+        await db.collection(FIREBASE_COLLECTION_NAME).doc(APP_VERSION).collection("LoginSessions").doc("last_" + uid.replace(/[^a-zA-Z0-9_-]/g, "_")).set(payload, { merge: true });
+    } catch (e) {}
+    return ok;
 }
 
 function toast(msg, type) {
@@ -338,10 +351,12 @@ function maskEmail(email) {
     return n.length <= 3 ? n[0]+"***@"+d : n.slice(0,4)+"***"+n.slice(-2)+"@"+d;
 }
 async function returnToApp() {
-    try { await Promise.race([writeLoginSession(PortalStorage.cur()), new Promise(r => setTimeout(r, 4000))]); } catch(e){}
+    // আগে সেশন লিখে তারপর অ্যাপে ফিরো — অ্যাপ Firebase থেকে অটো সিঙ্ক করবে
+    try { await Promise.race([writeLoginSession(PortalStorage.cur()), new Promise(r => setTimeout(r, 5000))]); } catch(e){}
+    try { notifyApp(PortalStorage.cur()); } catch(e){}
     try { if (window.opener) { window.opener.focus(); window.close(); return; } } catch(e){}
     try { window.close(); } catch(e){}
-    try { if (history.length > 1) history.back(); else toast("অ্যাপ খুলুন — লগইন সেভ হয়েছে।","info"); } catch(e){ toast("অ্যাপ খুলুন — লগইন সেভ হয়েছে।","info"); }
+    try { if (history.length > 1) history.back(); else toast("অ্যাপ খুলুন — লগইন সেভ হয়েছে, প্রোফাইল অটো আসবে।","info"); } catch(e){ toast("অ্যাপ খুলুন — লগইন সেভ হয়েছে।","info"); }
 }
 document.getElementById("btnReturnApp").addEventListener("click", returnToApp);
 document.getElementById("btnSwitchAcc").addEventListener("click", () => { PortalStorage.setCur(null); goPanel("login"); });
@@ -589,7 +604,6 @@ function notifyApp(userData) {
 async function finishLogin(userData, title) {
     userData.version = userData.foundVersion || userData.version || APP_VERSION;
     userData.app = FIREBASE_COLLECTION_NAME;
-    // পাসওয়ার্ড হ্যাশ ক্লায়েন্টে রাখি না
     if (userData.user_profile) {
         const copy = { ...userData.user_profile };
         delete copy.password_hash;
@@ -598,18 +612,21 @@ async function finishLogin(userData, title) {
     PortalStorage.setCur(userData);
     PortalStorage.addSavedAccount(userData);
     try { localStorage.setItem("kr_user_uid", userData.user_profile.uid); } catch(e){}
+    const uidShow = userData.user_profile.uid || "";
+    const nameShow = userData.user_profile.name || "";
     document.getElementById("successTitle").textContent = title || "লগইন সফল!";
     document.getElementById("successMsg").textContent =
-        "অ্যাপে ফিরে গেলে অটো লগইন হবে।\nUID: " + (userData.user_profile.uid || "");
+        (nameShow ? ("নাম: " + nameShow + "\n") : "") +
+        "UID: " + uidShow + "\n\nনিচের বাটনে চাপুন → অ্যাপে ফিরে যান।\nঅ্যাপ নিজেই নাম, ছবি ও ক্রেডিট সিঙ্ক করবে।";
     goPanel("success");
-    // ডাটাবেসে কালেকশন নিশ্চিত (সর্বোচ্চ ৬ সেকেন্ড অপেক্ষা — পেজ বন্ধ হওয়ার আগে লেখা শেষ হওয়ার জন্য)
     try {
         await Promise.race([ensureUserCollections(userData), new Promise(r => setTimeout(r, 6000))]);
     } catch(e){}
-    try { await Promise.race([writeLoginSession(userData), new Promise(r => setTimeout(r, 4000))]); } catch(e){}
+    // সেশন আগে লিখি যাতে অ্যাপ অটো লগইন পায়
+    try { await Promise.race([writeLoginSession(userData), new Promise(r => setTimeout(r, 5000))]); } catch(e){}
     notifyApp(userData);
-    toast("সফল! অ্যাপে ফিরে যান।", "ok");
-    setTimeout(() => { try { if (window.opener) { window.opener.focus(); window.close(); } } catch(e){} }, 1200);
+    toast("সফল! অ্যাপে ফিরে যান — প্রোফাইল অটো আসবে।", "ok");
+    setTimeout(() => { try { if (window.opener) { window.opener.focus(); window.close(); } } catch(e){} }, 1500);
 }
 
 let pending = null, realVerifyCode = "", realTokenId = "", codeExpireTime = 0, verifyMode = "reg";
