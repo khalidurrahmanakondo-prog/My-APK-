@@ -81,22 +81,25 @@ button:disabled{opacity:.8;cursor:wait}
     </button>
     <div class="or">অথবা</div>
     <div class="tabs">
-      <button type="button" class="tab" data-p="emailPanel">ইমেইল</button>
-      <button type="button" class="tab" data-p="phonePanel">ফোন নম্বর</button>
+      <button type="button" class="tab" data-p="emailPanel">ইমেইল লগইন</button>
+      <button type="button" class="tab" data-p="regPanel">নতুন অ্যাকাউন্ট</button>
     </div>
     <div id="emailPanel" class="panel" hidden>
       <input id="emailIn" type="email" placeholder="ইমেইল" autocomplete="email">
-      <input id="passIn" type="password" placeholder="পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)" autocomplete="current-password">
+      <input id="passIn" type="password" placeholder="পাসওয়ার্ড" autocomplete="current-password">
       <button type="button" id="emailLogin" class="primary">লগইন</button>
-      <button type="button" id="emailSignup" class="secondary">নতুন অ্যাকাউন্ট খুলুন</button>
       <button type="button" id="forgotBtn" class="linkbtn">পাসওয়ার্ড ভুলে গেছেন?</button>
     </div>
-    <div id="phonePanel" class="panel" hidden>
-      <input id="phoneIn" type="tel" placeholder="ফোন নম্বর, যেমন 01XXXXXXXXX">
+    <div id="regPanel" class="panel" hidden>
+      <input id="regName" type="text" placeholder="আপনার নাম" autocomplete="name">
+      <input id="regEmail" type="email" placeholder="ইমেইল" autocomplete="email">
+      <input id="regPass" type="password" placeholder="পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)" autocomplete="new-password">
+      <input id="phoneIn" type="tel" placeholder="ফোন নম্বর, যেমন 01XXXXXXXXX" autocomplete="tel">
       <button type="button" id="sendCode" class="primary">কোড পাঠান</button>
       <div id="codeBox" hidden>
+        <p style="font-size:13px;color:#5b6b88;margin-bottom:8px">SMS-এ আসা কোড দিন। কোডের মেয়াদ: <b id="timerShow">5:00</b></p>
         <input id="codeIn" type="text" inputmode="numeric" maxlength="6" placeholder="৬ সংখ্যার কোড">
-        <button type="button" id="verifyCode" class="primary">যাচাই করুন</button>
+        <button type="button" id="verifyCode" class="primary">যাচাই করে অ্যাকাউন্ট খুলুন</button>
       </div>
       <div id="recaptchaHolder"></div>
     </div>
@@ -112,6 +115,7 @@ button:disabled{opacity:.8;cursor:wait}
     <div class="info">
       <div class="row"><span class="label">নাম</span><div class="value" id="userName">—</div></div>
       <div class="row"><span class="label">ইমেইল / ফোন</span><div class="value" id="userEmail">—</div></div>
+      <div class="row"><span class="label">UID</span><div class="value" id="userUid">—</div></div>
     </div>
     <div id="verifyBox" class="panel" hidden>
       <button type="button" id="sendVerify" class="secondary">ইমেইল ভেরিফিকেশন পাঠান</button>
@@ -122,7 +126,7 @@ button:disabled{opacity:.8;cursor:wait}
   </div>
 
 </section>
-<div class="footer">© <span id="year"></span> KR Calculator A<br><span style="font-size:11px">ডোমেইন: <b id="domainShow"></b> · সংস্করণ v7</span></div>
+<div class="footer">© <span id="year"></span> KR Calculator A<br><span style="font-size:11px">ডোমেইন: <b id="domainShow"></b> · সংস্করণ v8</span></div>
 </main>
 
 <script>
@@ -138,7 +142,7 @@ setTimeout(function () {
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut,
   createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, sendPasswordResetEmail,
-  RecaptchaVerifier, signInWithPhoneNumber }
+  RecaptchaVerifier, PhoneAuthProvider, linkWithCredential, updateProfile }
   from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
 import { getDatabase, ref, get, update, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/11.10.0/firebase-database.js";
@@ -184,11 +188,12 @@ function showProfile(user) {
   $("profileName").textContent = name;
   $("userName").textContent = name;
   $("userEmail").textContent = user.email || user.phoneNumber || "পাওয়া যায়নি";
-  const needVerify = user.providerData.some(x => x.providerId === "password") && !user.emailVerified;
+  const needVerify = user.providerData.some(x => x.providerId === "password") && !user.emailVerified && !user.phoneNumber;
   $("verifyBox").hidden = !needVerify;
   $("verBadge").textContent = needVerify ? "⚠ ইমেইল যাচাই বাকি" : "✓ সফলভাবে লগইন হয়েছে";
   $("verBadge").className = "verified" + (needVerify ? " warn" : "");
   $("userCode").textContent = code8(user.uid);
+  $("userUid").textContent = user.uid;
   const img = $("profilePhoto");
   if (user.photoURL) {
     img.onerror = () => { img.hidden = true; };
@@ -232,6 +237,7 @@ if (!okProtocol) {
   window.auth = getAuth(app);
   window.db = getDatabase(app);
   const auth = window.auth;
+  let registering = false;
 
   const provider = new GoogleAuthProvider();
   provider.addScope("email");
@@ -288,6 +294,7 @@ if (!okProtocol) {
   });
 
   onAuthStateChanged(auth, user => {
+    if (registering) return;
     if (!user) { showLogin(); return; }
     setBusy(false);
     showProfile(user);          // সাথে সাথে দেখাবে
@@ -308,6 +315,9 @@ if (!okProtocol) {
     "auth/operation-not-allowed": "Firebase Console → Authentication → Sign-in method-এ এই পদ্ধতি চালু করুন।",
     "auth/billing-not-enabled": "ফোন কোডের জন্য Firebase প্রজেক্টে বিলিং প্ল্যান (Blaze) লাগবে।",
     "auth/network-request-failed": "ইন্টারনেট সংযোগ পরীক্ষা করুন।",
+    "auth/credential-already-in-use": "এই ফোন নম্বর আগেই অন্য অ্যাকাউন্টে ব্যবহৃত হয়েছে।",
+    "auth/provider-already-linked": "এই ফোন নম্বর আগেই যুক্ত আছে।",
+    "app/missing": "নাম, ইমেইল, পাসওয়ার্ড ও ফোন নম্বর সব লিখুন।",
     "app/timeout": "সময় শেষ। আবার চেষ্টা করুন।"
   };
   const showErr = (e, el = $("loginStatus")) => status(el, EMSG[e?.code] || ("এরর: " + (e?.code || e?.message || e)), "error");
@@ -326,7 +336,7 @@ if (!okProtocol) {
 
   document.querySelectorAll(".tab").forEach(b => b.addEventListener("click", () => {
     const p = $(b.dataset.p), open = p.hidden;
-    ["emailPanel", "phonePanel"].forEach(id => { $(id).hidden = true; });
+    ["emailPanel", "regPanel"].forEach(id => { $(id).hidden = true; });
     p.hidden = !open;
   }));
 
@@ -340,15 +350,6 @@ if (!okProtocol) {
     const [em, pw] = creds();
     if (!pw) throw { code: "auth/missing-password" };
     await signInWithEmailAndPassword(auth, em, pw);
-  }));
-
-  $("emailSignup").addEventListener("click", () => run($("emailSignup"), "তৈরি হচ্ছে...", async () => {
-    const [em, pw] = creds();
-    const cred = await createUserWithEmailAndPassword(auth, em, pw);
-    try {
-      await sendEmailVerification(cred.user);
-      status($("profileStatus"), "ভেরিফিকেশন ইমেইল পাঠানো হয়েছে। ইনবক্স বা স্প্যাম ফোল্ডার দেখে লিংকে চাপুন।", "success");
-    } catch (e) { showErr(e, $("profileStatus")); }
   }));
 
   $("forgotBtn").addEventListener("click", () => run($("forgotBtn"), "পাঠানো হচ্ছে...", async () => {
@@ -369,29 +370,75 @@ if (!okProtocol) {
     status($("profileStatus"), auth.currentUser.emailVerified ? "ইমেইল যাচাই সম্পন্ন।" : "এখনো যাচাই হয়নি। ইমেইলের লিংকে চাপুন।", auth.currentUser.emailVerified ? "success" : "warning");
   }, $("profileStatus")));
 
-  let confirmation = null, recaptcha = null;
+  let verId = null, expTimer = null, recaptcha = null;
+  function startExpiry() {
+    clearInterval(expTimer);
+    let left = 300;
+    const tick = () => {
+      $("timerShow").textContent = Math.floor(left / 60) + ":" + String(left % 60).padStart(2, "0");
+      if (left-- <= 0) {
+        clearInterval(expTimer);
+        verId = null;
+        $("codeIn").value = "";
+        $("codeBox").hidden = true;
+        status($("loginStatus"), "কোডের মেয়াদ (৫ মিনিট) শেষ হয়েছে। নতুন কোড পাঠান।", "warning");
+      }
+    };
+    tick();
+    expTimer = setInterval(tick, 1000);
+  }
+
+  const regData = () => {
+    const name = $("regName").value.trim(), em = $("regEmail").value.trim(), pw = $("regPass").value;
+    let ph = $("phoneIn").value.replace(/[\s-]/g, "");
+    if (!name || !em || !pw || !ph) throw { code: "app/missing" };
+    if (!/@/.test(em)) throw { code: "auth/invalid-email" };
+    if (pw.length < 6) throw { code: "auth/weak-password" };
+    if (/^01\d{9}$/.test(ph)) ph = "+88" + ph;
+    if (!/^\+\d{10,15}$/.test(ph)) throw { code: "auth/invalid-phone-number" };
+    return { name, em, pw, ph };
+  };
+
   $("sendCode").addEventListener("click", () => run($("sendCode"), "কোড পাঠানো হচ্ছে...", async () => {
-    let n = $("phoneIn").value.replace(/[\s-]/g, "");
-    if (/^01\d{9}$/.test(n)) n = "+88" + n;
-    if (!/^\+\d{10,15}$/.test(n)) throw { code: "auth/invalid-phone-number" };
+    const d = regData();
+    try { recaptcha?.clear(); } catch (_) {}
+    $("recaptchaHolder").innerHTML = '<div id="recaptchaEl"></div>';
     try {
-      try { recaptcha?.clear(); } catch (_) {}
-      $("recaptchaHolder").innerHTML = '<div id="recaptchaEl"></div>';
       recaptcha = new RecaptchaVerifier(auth, "recaptchaEl", { size: "invisible" });
-      confirmation = await signInWithPhoneNumber(auth, n, recaptcha);
-      $("codeBox").hidden = false;
-      status($("loginStatus"), "SMS-এ কোড পাঠানো হয়েছে। নিচে কোডটি দিন।", "success");
+      verId = await new PhoneAuthProvider(auth).verifyPhoneNumber(d.ph, recaptcha);
     } catch (e) {
       try { recaptcha?.clear(); } catch (_) {}
       recaptcha = null;
       $("recaptchaHolder").innerHTML = "";
       throw e;
     }
+    $("codeBox").hidden = false;
+    startExpiry();
+    status($("loginStatus"), "SMS-এ কোড পাঠানো হয়েছে। ৫ মিনিটের মধ্যে কোডটি দিন।", "success");
   }));
 
-  $("verifyCode").addEventListener("click", () => run($("verifyCode"), "যাচাই হচ্ছে...", async () => {
-    if (!confirmation) throw { code: "auth/code-expired" };
-    await confirmation.confirm($("codeIn").value.trim());
+  $("verifyCode").addEventListener("click", () => run($("verifyCode"), "অ্যাকাউন্ট তৈরি হচ্ছে...", async () => {
+    if (!verId) throw { code: "auth/code-expired" };
+    const d = regData();
+    registering = true;
+    let created = null;
+    try {
+      created = (await createUserWithEmailAndPassword(auth, d.em, d.pw)).user;
+      await linkWithCredential(created, PhoneAuthProvider.credential(verId, $("codeIn").value.trim()));
+      await updateProfile(created, { displayName: d.name });
+      clearInterval(expTimer);
+      verId = null;
+      registering = false;
+      showProfile(auth.currentUser);
+      saveProfile(auth.currentUser);
+      status($("profileStatus"), "অ্যাকাউন্ট তৈরি হয়েছে। স্বাগতম, " + d.name + "!", "success");
+    } catch (e) {
+      /* কোড ভুল হলে আধা-তৈরি অ্যাকাউন্ট মুছে ফেলা হয় */
+      if (created) { try { await created.delete(); } catch (_) {} }
+      registering = false;
+      if (!auth.currentUser) showLogin();
+      throw e;
+    }
   }));
 
   getRedirectResult(auth).catch(() => {});
