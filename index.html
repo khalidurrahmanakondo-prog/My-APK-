@@ -168,7 +168,7 @@ async function saveProfile(user) {
 const okProtocol = location.protocol === "http:" || location.protocol === "https:";
 if (!okProtocol) {
   status($("loginStatus"),
-    "এই ফাইলটি সরাসরি ফোন/এডিটর থেকে খুললে Google লগইন কাজ করে না।\nFirebase Hosting-এ আপলোড করে এই লিংকে খুলুন:\n" + HOSTED_URL, "warning");
+    "এই পেজ এখন ফোনের ফাইল/এডিটর (" + location.protocol + ") থেকে খোলা, তাই Google লগইন চলবে না।\nFirebase Hosting-এ আপলোড করে এই লিংকে খুলুন:\n" + HOSTED_URL, "warning");
   
 } else {
   if (/\.(web\.app|firebaseapp\.com)$/.test(location.hostname)) firebaseConfig.authDomain = location.hostname;
@@ -217,7 +217,7 @@ if (!okProtocol) {
       }
       if (c !== "auth/popup-closed-by-user" && c !== "auth/cancelled-popup-request") {
         const msgs = {
-          "auth/unauthorized-domain": "এই ডোমেইন অনুমোদিত নয়। " + HOSTED_URL + " লিংকে খুলুন অথবা Authorized domains-এ যোগ করুন।",
+          "auth/unauthorized-domain": "পেজটি এই ঠিকানা থেকে খোলা হয়েছে:\n" + location.origin + "\nএই ডোমেইন Firebase-এর Authorized domains তালিকায় নেই। ঠিক এই ডোমেইন (" + location.hostname + ") যোগ করুন, অথবা " + HOSTED_URL + " লিংকে খুলুন।",
           "auth/operation-not-allowed": "Firebase Console → Authentication → Sign-in method-এ Google চালু করুন।",
           "auth/network-request-failed": "ইন্টারনেট সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।"
         };
