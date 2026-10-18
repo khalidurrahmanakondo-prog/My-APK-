@@ -626,7 +626,7 @@ async function finishLogin(userData, title) {
     try { await Promise.race([writeLoginSession(userData), new Promise(r => setTimeout(r, 5000))]); } catch(e){}
     notifyApp(userData);
     toast("সফল! অ্যাপে ফিরে যান — প্রোফাইল অটো আসবে।", "ok");
-    setTimeout(() => { try { if (window.opener) { window.opener.focus(); window.close(); } } catch(e){} }, 1500);
+    // অটো ক্লোজ/রিস্টার্ট নয় — ইউজার নিজে «অ্যাপে ফিরে যান» চাপবে
 }
 
 let pending = null, realVerifyCode = "", realTokenId = "", codeExpireTime = 0, verifyMode = "reg";
@@ -640,7 +640,7 @@ async function sendVerifyEmail(name, email, uid) {
     await emailjs.send(EMAILJS_SERVICE, EMAILJS_TEMPLATE, {
         user_name: name || "User", app_name: FIREBASE_COLLECTION_NAME,
         token_id: realTokenId, verification_code: realVerifyCode, uid_with_kr: uid || "",
-        time: new Date().toLocaleString("bn-BD"), to_email: email, to_name: name || "User",
+        time: new Date().toLocaleString("en-GB"), to_email: email, to_name: name || "User",
         from_name: "KR Pure Application BD"
     });
 }
@@ -741,7 +741,7 @@ document.getElementById("regForm").addEventListener("submit", async (e) => {
             app: FIREBASE_COLLECTION_NAME, version: APP_VERSION, foundVersion: APP_VERSION,
             user_profile: {
                 name, email, uid, birth_year: Number(birthYear),
-                joined: new Date().toLocaleDateString("bn-BD"), version: APP_VERSION,
+                joined: new Date().toLocaleDateString("en-GB"), version: APP_VERSION,
                 app_permission: true, password_hash
             },
             user_credit: INITIAL_NEW_USER_CREDITS, debt_credit: 0, avatar: null, isCircle: false, isNewAccount: true
@@ -995,7 +995,7 @@ document.getElementById("btnConfirmGYear").addEventListener("click", async () =>
             app: FIREBASE_COLLECTION_NAME, version: APP_VERSION, foundVersion: APP_VERSION,
             user_profile: {
                 name, email, uid, birth_year: gSelectedYear,
-                joined: new Date().toLocaleDateString("bn-BD"), version: APP_VERSION,
+                joined: new Date().toLocaleDateString("en-GB"), version: APP_VERSION,
                 app_permission: true, google: true, password_hash: null
             },
             user_credit: INITIAL_NEW_USER_CREDITS, debt_credit: 0,
