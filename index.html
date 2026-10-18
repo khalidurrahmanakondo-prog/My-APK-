@@ -85,7 +85,7 @@ h1{font-size:24px;font-weight:800;overflow-wrap:anywhere}
   </div>
 
 </section>
-<div class="footer">© <span id="year"></span> KR Calculator A</div>
+<div class="footer">© <span id="year"></span> KR Calculator A<br><span style="font-size:11px">ডোমেইন: <b id="domainShow"></b></span></div>
 </main>
 
 <script type="module">
@@ -109,6 +109,7 @@ const HOSTED_URL = "https://kr-calculator-a-bc1e2.web.app";
 
 const $ = id => document.getElementById(id);
 $("year").textContent = new Date().getFullYear();
+$("domainShow").textContent = location.hostname || location.protocol;
 
 function status(el, msg, type = "info") { el.textContent = msg; el.className = "status show " + type; }
 function clearStatus(el) { el.textContent = ""; el.className = "status"; }
