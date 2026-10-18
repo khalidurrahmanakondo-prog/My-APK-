@@ -90,6 +90,19 @@ button:disabled{opacity:.8;cursor:wait}
       <button type="button" id="emailLogin" class="primary">লগইন</button>
       <button type="button" id="forgotBtn" class="linkbtn">পাসওয়ার্ড ভুলে গেছেন?</button>
     </div>
+    <div id="forgotPanel" class="panel" hidden>
+      <p style="font-size:13px;color:#5b6b88;margin-bottom:10px;line-height:1.8">অ্যাকাউন্টের ইমেইল ও রেজিস্ট্রেশনের ফোন নম্বর দিন। ফোনে কোড যাবে, কোড দিলে ইমেইলে পাসওয়ার্ড বদলানোর লিংক যাবে।</p>
+      <input id="fgEmail" type="email" placeholder="অ্যাকাউন্টের ইমেইল" autocomplete="email">
+      <input id="fgPhone" type="tel" placeholder="ফোন নম্বর, যেমন 01XXXXXXXXX">
+      <button type="button" id="fgSend" class="primary">ফোনে কোড পাঠান</button>
+      <div id="fgCodeBox" hidden>
+        <p style="font-size:13px;color:#5b6b88;margin-bottom:8px">SMS-এ আসা কোড দিন। কোডের মেয়াদ: <b id="fgTimer">5:00</b></p>
+        <input id="fgCode" type="text" inputmode="numeric" maxlength="6" placeholder="৬ সংখ্যার কোড">
+        <button type="button" id="fgVerify" class="primary">যাচাই করে ইমেইলে লিংক পাঠান</button>
+      </div>
+      <div id="fgRecaptchaHolder"></div>
+      <button type="button" id="fgBack" class="linkbtn">← লগইনে ফিরুন</button>
+    </div>
     <div id="regPanel" class="panel" hidden>
       <input id="regName" type="text" placeholder="আপনার নাম" autocomplete="name">
       <input id="regEmail" type="email" placeholder="ইমেইল" autocomplete="email">
@@ -126,7 +139,7 @@ button:disabled{opacity:.8;cursor:wait}
   </div>
 
 </section>
-<div class="footer">© <span id="year"></span> KR Calculator A<br><span style="font-size:11px">ডোমেইন: <b id="domainShow"></b> · সংস্করণ v9</span></div>
+<div class="footer">© <span id="year"></span> KR Calculator A<br><span style="font-size:11px">ডোমেইন: <b id="domainShow"></b> · সংস্করণ v10</span></div>
 </main>
 
 <script>
@@ -142,7 +155,7 @@ setTimeout(function () {
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut,
   createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, sendPasswordResetEmail,
-  RecaptchaVerifier, PhoneAuthProvider, linkWithCredential, updateProfile }
+  RecaptchaVerifier, PhoneAuthProvider, signInWithPhoneNumber, linkWithCredential, updateProfile }
   from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
 import { getDatabase, ref, get, update, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/11.10.0/firebase-database.js";
@@ -237,7 +250,7 @@ if (!okProtocol) {
   window.auth = getAuth(app);
   window.db = getDatabase(app);
   const auth = window.auth;
-  let registering = false;
+  let registering = false, resetting = false;
 
   const provider = new GoogleAuthProvider();
   provider.addScope("email");
@@ -294,7 +307,7 @@ if (!okProtocol) {
   });
 
   onAuthStateChanged(auth, user => {
-    if (registering) return;
+    if (registering || resetting) return;
     if (!user) { showLogin(); return; }
     setBusy(false);
     showProfile(user);          // সাথে সাথে দেখাবে
@@ -320,6 +333,8 @@ if (!okProtocol) {
     "auth/network-request-failed": "ইন্টারনেট সংযোগ পরীক্ষা করুন।",
     "auth/credential-already-in-use": "এই ফোন নম্বর আগেই অন্য অ্যাকাউন্টে ব্যবহৃত হয়েছে।",
     "auth/provider-already-linked": "এই ফোন নম্বর আগেই যুক্ত আছে।",
+    "app/nouser": "এই ফোন নম্বরে কোনো অ্যাকাউন্ট নেই।",
+    "app/mismatch": "এই ইমেইল ও ফোন নম্বর একই অ্যাকাউন্টের নয়।",
     "app/missing": "নাম, ইমেইল, পাসওয়ার্ড ও ফোন নম্বর সব লিখুন।",
     "app/timeout": "সময় শেষ। আবার চেষ্টা করুন।"
   };
@@ -339,7 +354,7 @@ if (!okProtocol) {
 
   document.querySelectorAll(".tab").forEach(b => b.addEventListener("click", () => {
     const p = $(b.dataset.p), open = p.hidden;
-    ["emailPanel", "regPanel"].forEach(id => { $(id).hidden = true; });
+    ["emailPanel", "regPanel", "forgotPanel"].forEach(id => { $(id).hidden = true; });
     p.hidden = !open;
   }));
 
@@ -355,11 +370,87 @@ if (!okProtocol) {
     await signInWithEmailAndPassword(auth, em, pw);
   }));
 
-  $("forgotBtn").addEventListener("click", () => run($("forgotBtn"), "পাঠানো হচ্ছে...", async () => {
-    const em = $("emailIn").value.trim();
-    if (!em) throw { code: "auth/invalid-email" };
-    await sendPasswordResetEmail(auth, em);
-    status($("loginStatus"), "পাসওয়ার্ড রিসেটের লিংক ইমেইলে পাঠানো হয়েছে। স্প্যাম ফোল্ডারও দেখুন।", "success");
+  /* ---- পাসওয়ার্ড ভুলে গেলে: ফোনে কোড → ইমেইলে লিংক ---- */
+  const normPhone = v => {
+    let n = v.replace(/[\s-]/g, "");
+    if (/^01\d{9}$/.test(n)) n = "+88" + n;
+    return /^\+\d{10,15}$/.test(n) ? n : null;
+  };
+  function countdown(el, done) {
+    let left = 300, t;
+    const tick = () => {
+      el.textContent = Math.floor(left / 60) + ":" + String(left % 60).padStart(2, "0");
+      if (left-- <= 0) { clearInterval(t); done(); }
+    };
+    t = setInterval(tick, 1000);
+    tick();
+    return t;
+  }
+
+  $("forgotBtn").addEventListener("click", () => {
+    $("fgEmail").value = $("emailIn").value;
+    $("emailPanel").hidden = true;
+    $("forgotPanel").hidden = false;
+    clearStatus($("loginStatus"));
+  });
+  $("fgBack").addEventListener("click", () => {
+    $("forgotPanel").hidden = true;
+    $("emailPanel").hidden = false;
+    clearStatus($("loginStatus"));
+  });
+
+  let fgConf = null, fgTimer = null, fgRecap = null;
+  $("fgSend").addEventListener("click", () => run($("fgSend"), "কোড পাঠানো হচ্ছে...", async () => {
+    const em = $("fgEmail").value.trim(), ph = normPhone($("fgPhone").value);
+    if (!/@/.test(em)) throw { code: "auth/invalid-email" };
+    if (!ph) throw { code: "auth/invalid-phone-number" };
+    try { fgRecap?.clear(); } catch (_) {}
+    $("fgRecaptchaHolder").innerHTML = '<div id="fgRecaptchaEl"></div>';
+    try {
+      fgRecap = new RecaptchaVerifier(auth, "fgRecaptchaEl", { size: "invisible" });
+      fgConf = await signInWithPhoneNumber(auth, ph, fgRecap);
+    } catch (e) {
+      try { fgRecap?.clear(); } catch (_) {}
+      fgRecap = null;
+      $("fgRecaptchaHolder").innerHTML = "";
+      throw e;
+    }
+    $("fgCodeBox").hidden = false;
+    clearInterval(fgTimer);
+    fgTimer = countdown($("fgTimer"), () => {
+      fgConf = null;
+      $("fgCode").value = "";
+      $("fgCodeBox").hidden = true;
+      status($("loginStatus"), "কোডের মেয়াদ (৫ মিনিট) শেষ হয়েছে। নতুন কোড পাঠান।", "warning");
+    });
+    status($("loginStatus"), "SMS-এ কোড পাঠানো হয়েছে। ৫ মিনিটের মধ্যে দিন।", "success");
+  }));
+
+  $("fgVerify").addEventListener("click", () => run($("fgVerify"), "যাচাই হচ্ছে...", async () => {
+    if (!fgConf) throw { code: "auth/code-expired" };
+    const em = $("fgEmail").value.trim();
+    resetting = true;
+    try {
+      const user = (await fgConf.confirm($("fgCode").value.trim())).user;
+      if (!user.email) {                      // এই নম্বরে আগে অ্যাকাউন্ট ছিল না
+        try { await user.delete(); } catch (_) { await signOut(auth); }
+        throw { code: "app/nouser" };
+      }
+      if (user.email.toLowerCase() !== em.toLowerCase()) {
+        await signOut(auth);
+        throw { code: "app/mismatch" };
+      }
+      await signOut(auth);
+      await sendPasswordResetEmail(auth, em);
+      clearInterval(fgTimer);
+      fgConf = null;
+      $("fgCode").value = "";
+      $("fgCodeBox").hidden = true;
+      status($("loginStatus"), "ফোন যাচাই সম্পন্ন। ইমেইলে লিংক পাঠানো হয়েছে (স্প্যাম ফোল্ডারও দেখুন)। লিংকে চেপে নতুন পাসওয়ার্ড দিয়ে তারপর লগইন করুন।", "success");
+    } finally {
+      resetting = false;
+      if (!auth.currentUser) showLogin();
+    }
   }));
 
   $("sendVerify").addEventListener("click", () => run($("sendVerify"), "পাঠানো হচ্ছে...", async () => {
