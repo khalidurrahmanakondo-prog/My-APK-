@@ -1,542 +1,813 @@
 <!DOCTYPE html>
 <html lang="bn">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#f5f7fc">
-<title>KR Calculator A — Login</title>
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-:root{--blue:#1769ff;--text:#17233c;--muted:#718096}
-body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:22px 16px;
- background:radial-gradient(circle at 5% 5%,#dfeaff,transparent 36%),radial-gradient(circle at 95% 95%,#e8e8ff,transparent 36%),#f5f7fc;
- color:var(--text);font-family:Arial,"Noto Sans Bengali",sans-serif}
-button{font:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
-.container{width:100%;max-width:410px}
-.card{background:#fff;border:1px solid #fff;border-radius:26px;padding:30px 23px 25px;text-align:center;box-shadow:0 18px 60px #253f7015}
-.logo{width:76px;height:76px;display:grid;place-items:center;margin:0 auto 17px;border-radius:24px;color:#fff;
- background:linear-gradient(145deg,#3985ff,#124cce);font-size:28px;font-weight:900;letter-spacing:-2px;box-shadow:0 8px 25px #1769ff35}
-h1{font-size:24px;font-weight:800;overflow-wrap:anywhere}
-.subtitle{margin-top:10px;color:var(--muted);font-size:14px;line-height:1.9}
-.divider{height:1px;background:#edf0f6;margin:25px 0}
-.google-button{width:100%;min-height:56px;display:flex;align-items:center;justify-content:center;gap:12px;padding:13px;
- border:1px solid #dce2ec;border-radius:15px;background:#fff;color:#253149;font-weight:700;font-size:15px}
-.google-button:active{background:#f1f5ff}
-.google-icon{width:24px;height:24px;flex-shrink:0}
-.status{display:none;padding:12px;margin-top:16px;border-radius:12px;font-size:13px;line-height:1.8;text-align:left;overflow-wrap:anywhere;white-space:pre-wrap}
-.status.show{display:block}
-.status.error{color:#a32119;background:#fff0ef}
-.status.success{color:#126b41;background:#eaf9f0}
-.status.warning{color:#8b5500;background:#fff6df}
-.privacy{margin-top:19px;color:#8994a8;font-size:12px;line-height:1.8}
-.profile{display:none;text-align:center}
-.profile.active{display:block}
-.photo{width:92px;height:92px;object-fit:cover;border-radius:50%;border:4px solid #e5edff;background:#edf2fa;margin:0 auto 15px;display:block}
-.verified{display:inline-block;margin-top:10px;padding:7px 12px;border-radius:30px;color:#147b4a;background:#e9f9f0;font-size:12px;font-weight:700}
-.code{margin-top:16px;padding:14px;border-radius:16px;background:#eef4ff;color:#124cce}
-.code small{display:block;font-size:12px;color:#5b6b88;margin-bottom:4px}
-.code b{font-size:28px;letter-spacing:5px}
-.info{margin-top:16px;padding:6px 16px;border-radius:16px;background:#f6f8fc;text-align:left}
-.row{padding:11px 0;border-bottom:1px solid #e7edf5;overflow-wrap:anywhere}
-.row:last-child{border:0}
-.label{display:block;color:#718096;font-size:12px;margin-bottom:5px}
-.value{font-size:14px;font-weight:600;line-height:1.7}
-.logout{width:100%;margin-top:18px;padding:14px;border:0;border-radius:13px;background:#fff0ef;color:#c62828;font-weight:700}
-.footer{text-align:center;padding-top:20px;color:#8a95a8;font-size:12px}
-.google-button:disabled{opacity:.85;cursor:wait}
-.loader{width:20px;height:20px;border:3px solid #cad9ff;border-top-color:#1769ff;border-radius:50%;animation:spin .6s linear infinite;flex-shrink:0}
-@keyframes spin{to{transform:rotate(360deg)}}
-.or{margin:18px 0 10px;color:#8994a8;font-size:12px}
-.tabs{display:flex;gap:8px}
-.tab,.secondary{flex:1;padding:12px;border:1px solid #dce2ec;border-radius:13px;background:#fff;color:#2458a6;font-weight:700;font-size:14px}
-.panel{margin-top:12px;text-align:left}
-.panel input{width:100%;padding:13px;margin-bottom:10px;border:1px solid #dce2ec;border-radius:12px;font-size:15px;background:#fafbff}
-.primary{width:100%;padding:13px;margin-bottom:10px;border:0;border-radius:13px;background:var(--blue);color:#fff;font-weight:700;font-size:15px}
-.panel .secondary{width:100%;margin-bottom:6px}
-.linkbtn{background:none;border:0;color:#2458a6;font-size:13px;padding:8px;width:100%}
-button:disabled{opacity:.8;cursor:wait}
-.spin::before{content:"";display:inline-block;width:14px;height:14px;margin-right:8px;vertical-align:-2px;border:2px solid #cad9ff;border-top-color:#1769ff;border-radius:50%;animation:spin .6s linear infinite}
-.primary.spin::before{border-color:#ffffff66;border-top-color:#fff}
-.verified.warn{color:#8b5500;background:#fff6df}
-[hidden]{display:none!important}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <title>KR Calculator A — Login</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <style>
+        :root {
+            --green: #22c55e; --green-dark: #15803d; --red: #ef4444;
+            --text: #f1f5f9; --muted: #cbd5e1;
+            --card: rgba(10,20,15,0.55); --input-bg: rgba(5,12,8,0.55);
+            --border: rgba(255,255,255,0.2);
+        }
+        * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+        body {
+            font-family: 'Hind Siliguri','Plus Jakarta Sans',-apple-system,sans-serif;
+            min-height:100vh; background-color:#071108;
+            background-image:url('https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?q=80&w=1920&auto=format&fit=crop');
+            background-size:cover; background-position:center; background-attachment:fixed;
+            color:var(--text); overflow-x:hidden;
+        }
+        body::before { content:''; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:0; pointer-events:none; }
+        .wrap { position:relative; z-index:10; width:100%; max-width:440px; margin:0 auto; padding:24px 20px 50px; display:flex; flex-direction:column; align-items:center; }
+        .brand { text-align:center; margin-bottom:18px; width:100%; }
+        .logo-box { width:80px; height:80px; margin:0 auto 12px; border-radius:14px; overflow:hidden; background:rgba(255,255,255,0.08); display:flex; align-items:center; justify-content:center; }
+        .logo-box img { width:80px; height:80px; object-fit:cover; border-radius:14px; }
+        .btitle { font-size:24px; font-weight:800; color:#fff; text-shadow:0 2px 8px rgba(0,0,0,0.9); }
+        .bsub { font-size:14px; font-weight:600; color:#e2e8f0; margin-top:4px; text-shadow:0 1px 4px rgba(0,0,0,0.8); }
+        .bdesc { font-size:12.5px; color:var(--muted); line-height:1.55; margin-top:6px; padding:0 8px; text-shadow:0 1px 4px rgba(0,0,0,0.8); }
+        .card { background:var(--card); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); border:1px solid var(--border); border-radius:22px; padding:22px; width:100%; box-shadow:0 25px 50px -12px rgba(0,0,0,0.5); }
+        .panel { display:none; width:100%; }
+        .panel.on { display:block; }
+        .ib { margin-bottom:13px; width:100%; }
+        .ib label { display:block; font-size:13px; font-weight:600; color:#f1f5f9; margin-bottom:5px; text-shadow:0 1px 3px rgba(0,0,0,0.8); }
+        .iw { position:relative; width:100%; }
+        .iw > i:first-child { position:absolute; left:14px; top:50%; transform:translateY(-50%); color:var(--green); font-size:14px; z-index:2; }
+        .iw .eye-btn { position:absolute; right:12px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--muted); cursor:pointer; font-size:14px; z-index:2; padding:4px; }
+        .ib input, .ib select {
+            width:100%; padding:12px 12px 12px 42px; background:var(--input-bg);
+            border:1px solid var(--border); border-radius:11px; color:#fff; font-size:16px;
+            outline:none; transition:0.2s; -webkit-appearance:none; appearance:none;
+        }
+        .ib select { cursor:pointer; }
+        .ib select option { background:#0f1a12; color:#fff; }
+        .ib input::placeholder { color:#94a3b8; }
+        .ib input:focus, .ib select:focus { border-color:var(--green); box-shadow:0 0 0 3px rgba(34,197,94,0.3); background:rgba(5,12,8,0.75); }
+        .ib input.has-eye { padding-right:42px; }
+        .uid-row { display:flex; gap:8px; width:100%; }
+        .uid-row input { padding-left:12px; }
+        .gbtn { background:linear-gradient(135deg,var(--green-dark),var(--green)); color:#fff; border:none; padding:0 12px; border-radius:11px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; }
+        .help { font-size:11px; color:var(--muted); margin-top:4px; display:block; }
+        .err { font-size:12px; color:var(--red); margin-top:4px; display:none; font-weight:600; }
+        .btn { width:100%; padding:13px; background:linear-gradient(135deg,var(--green-dark),var(--green)); color:#fff; border:none; border-radius:11px; font-size:14.5px; font-weight:700; cursor:pointer; box-shadow:0 8px 18px -5px rgba(34,197,94,0.4); margin-top:4px; display:flex; align-items:center; justify-content:center; gap:8px; transition:0.15s; }
+        .btn:active { transform:scale(0.97); opacity:0.9; }
+        .btn:disabled { opacity:0.65; cursor:not-allowed; }
+        .btn.sec { background:rgba(0,0,0,0.4); border:1.5px solid var(--border); color:#fff; box-shadow:none; margin-top:8px; }
+        .btn.google { background:#fff; color:#1f2937; box-shadow:0 4px 12px rgba(0,0,0,0.2); border:1px solid rgba(0,0,0,0.08); }
+        .btn.google img { width:18px; height:18px; }
+        .divider { display:flex; align-items:center; gap:12px; margin:14px 0; color:var(--muted); font-size:12px; }
+        .divider::before, .divider::after { content:''; flex:1; height:1px; background:var(--border); }
+        .foot { text-align:center; margin-top:14px; padding-top:12px; border-top:1px solid var(--border); width:100%; }
+        .foot p { font-size:13px; color:var(--muted); }
+        .foot a { color:var(--green); text-decoration:none; font-weight:700; cursor:pointer; }
+        .token-box { font-size:24px; font-weight:800; color:var(--green); letter-spacing:3px; margin:12px 0; background:rgba(0,0,0,0.3); padding:12px; border-radius:10px; border:1px dashed var(--green); word-break:break-all; text-align:center; }
+        .toast-wrap { position:fixed; top:16px; right:12px; z-index:9999; display:flex; flex-direction:column; gap:8px; max-width:min(300px,calc(100vw - 24px)); pointer-events:none; }
+        .toast { pointer-events:auto; background:rgba(39,205,120,0.95); color:#fff; border-radius:10px; padding:10px 12px; font-size:13px; font-weight:600; box-shadow:0 4px 14px rgba(0,0,0,0.3); animation:slideIn 0.35s ease forwards; border:1px solid rgba(255,255,255,0.2); }
+        .toast.err { background:rgba(255,75,75,0.95); }
+        .toast.info { background:rgba(59,130,246,0.95); }
+        @keyframes slideIn { from { transform:translateX(110%); opacity:0; } to { transform:translateX(0); opacity:1; } }
+        .success-box { text-align:center; padding:12px 0; }
+        .success-box .big-icon { font-size:3rem; margin-bottom:10px; }
+        .success-box h3 { color:var(--green); font-size:1.2rem; margin-bottom:8px; }
+        .success-box p { color:var(--muted); font-size:13px; line-height:1.5; margin-bottom:16px; white-space:pre-line; }
+        .back-app { display:inline-flex; align-items:center; gap:6px; color:#FF00FF; border:1.5px solid #FF00FF; padding:6px 14px; border-radius:50px; font-size:0.85rem; font-weight:bold; background:transparent; cursor:pointer; margin-bottom:16px; align-self:flex-start; text-decoration:none; }
+        .year-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; max-height:220px; overflow-y:auto; padding:8px 0; }
+        .year-btn { padding:10px 4px; border-radius:10px; border:1px solid var(--border); background:rgba(5,12,8,0.55); color:#fff; font-weight:700; font-size:14px; cursor:pointer; }
+        .year-btn.sel { background:linear-gradient(135deg,var(--green-dark),var(--green)); border-color:var(--green); }
+        .year-btn:active { transform:scale(0.95); }
+        .selected-year { text-align:center; color:var(--green); font-weight:700; margin-top:6px; font-size:14px; }
+    </style>
 </head>
 <body>
-<main class="container">
-<section class="card">
+    <div class="toast-wrap" id="toastWrap"></div>
+    <div class="wrap">
+        <a class="back-app" href="#" onclick="returnToApp(); return false;">⬅️ অ্যাপে ফিরে যান</a>
+        <div class="brand">
+            <div class="logo-box">
+                <img src="https://i.ibb.co/mCkFYxkg/KR-Pure-1785491441116.png" alt="KR" width="80" height="80">
+            </div>
+            <h1 class="btitle">KR calculator A</h1>
+            <h2 class="bsub" id="heading">লগইন / সাইন ইন</h2>
+            <p class="bdesc" id="desc">ইমেইল+পাসওয়ার্ড, UID+পাসওয়ার্ড, অথবা Google।</p>
+        </div>
 
-  <div id="loginSection">
-    <div class="logo">KR</div>
-    <h1>KR Calculator A</h1>
-    <p class="subtitle">আপনার অ্যাকাউন্টে প্রবেশ করতে<br>Google দিয়ে নিরাপদে লগইন করুন।</p>
-    <div class="divider"></div>
-    <button type="button" id="googleLogin" class="google-button">
-      <svg class="google-icon" viewBox="0 0 48 48" aria-label="Google">
-        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.74 7.18l7.72 5.99c4.51-4.17 7.06-10.31 7.06-17.64z"/>
-        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.9-5.81l-7.72-5.99c-2.14 1.45-4.89 2.3-8.18 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-        <path fill="#FBBC05" d="M10.53 28.59A14.4 14.4 0 0 1 9.75 24c0-1.59.27-3.13.76-4.59l-7.98-6.19A23.9 23.9 0 0 0 0 24c0 3.87.93 7.52 2.56 10.78l7.97-6.19z"/>
-        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-      </svg>
-      <span id="btnText">Google দিয়ে চালিয়ে যান</span>
-    </button>
-    <div class="or">অথবা</div>
-    <div class="tabs">
-      <button type="button" class="tab" data-p="emailPanel">ইমেইল লগইন</button>
-      <button type="button" class="tab" data-p="regPanel">নতুন অ্যাকাউন্ট</button>
-    </div>
-    <div id="emailPanel" class="panel" hidden>
-      <input id="emailIn" type="email" placeholder="ইমেইল" autocomplete="email">
-      <input id="passIn" type="password" placeholder="পাসওয়ার্ড" autocomplete="current-password">
-      <button type="button" id="emailLogin" class="primary">লগইন</button>
-      <button type="button" id="forgotBtn" class="linkbtn">পাসওয়ার্ড ভুলে গেছেন?</button>
-    </div>
-    <div id="forgotPanel" class="panel" hidden>
-      <p style="font-size:13px;color:#5b6b88;margin-bottom:10px;line-height:1.8">অ্যাকাউন্টের ইমেইল ও রেজিস্ট্রেশনের ফোন নম্বর দিন। ফোনে কোড যাবে, কোড দিলে ইমেইলে পাসওয়ার্ড বদলানোর লিংক যাবে।</p>
-      <input id="fgEmail" type="email" placeholder="অ্যাকাউন্টের ইমেইল" autocomplete="email">
-      <input id="fgPhone" type="tel" placeholder="ফোন নম্বর, যেমন 01XXXXXXXXX">
-      <button type="button" id="fgSend" class="primary">ফোনে কোড পাঠান</button>
-      <div id="fgCodeBox" hidden>
-        <p style="font-size:13px;color:#5b6b88;margin-bottom:8px">SMS-এ আসা কোড দিন। কোডের মেয়াদ: <b id="fgTimer">5:00</b></p>
-        <input id="fgCode" type="text" inputmode="numeric" maxlength="6" placeholder="৬ সংখ্যার কোড">
-        <button type="button" id="fgVerify" class="primary">যাচাই করে ইমেইলে লিংক পাঠান</button>
-      </div>
-      <div id="fgRecaptchaHolder"></div>
-      <button type="button" id="fgBack" class="linkbtn">← লগইনে ফিরুন</button>
-    </div>
-    <div id="regPanel" class="panel" hidden>
-      <input id="regName" type="text" placeholder="আপনার নাম" autocomplete="name">
-      <input id="regEmail" type="email" placeholder="ইমেইল" autocomplete="email">
-      <input id="regPass" type="password" placeholder="পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)" autocomplete="new-password">
-      <input id="phoneIn" type="tel" placeholder="ফোন নম্বর, যেমন 01XXXXXXXXX" autocomplete="tel">
-      <button type="button" id="sendCode" class="primary">কোড পাঠান</button>
-      <div id="codeBox" hidden>
-        <p style="font-size:13px;color:#5b6b88;margin-bottom:8px">SMS-এ আসা কোড দিন। কোডের মেয়াদ: <b id="timerShow">5:00</b></p>
-        <input id="codeIn" type="text" inputmode="numeric" maxlength="6" placeholder="৬ সংখ্যার কোড">
-        <button type="button" id="verifyCode" class="primary">যাচাই করে অ্যাকাউন্ট খুলুন</button>
-      </div>
-      <div id="recaptchaHolder"></div>
-    </div>
-    <div id="loginStatus" class="status" role="status"></div>
-    <p class="privacy">🔒 আপনার প্রোফাইল Firebase-এ সংরক্ষিত হবে।</p>
-  </div>
+        <div class="card">
+            <!-- LOGIN -->
+            <div id="login" class="panel on">
+                <form id="loginForm">
+                    <div class="ib">
+                        <label>ইমেইল অথবা ইউআইডি (UID)</label>
+                        <div class="iw">
+                            <i class="fa-regular fa-user"></i>
+                            <input type="text" id="lInput" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="email@domain.com বা ৮ সংখ্যার UID" required>
+                        </div>
+                    </div>
+                    <div class="ib">
+                        <label>পাসওয়ার্ড <span style="font-weight:400;color:#94a3b8;">(ঐচ্ছিক — না থাকলে খালি রাখুন)</span></label>
+                        <div class="iw">
+                            <i class="fa-solid fa-lock"></i>
+                            <input type="password" id="lPass" class="has-eye" autocomplete="current-password" placeholder="পাসওয়ার্ড (সেট করা থাকলে)">
+                            <button type="button" class="eye-btn" data-for="lPass"><i class="fa-regular fa-eye"></i></button>
+                        </div>
+                        <small class="help">পাসওয়ার্ড সেট না থাকলে শুধু ইমেইল/UID দিয়ে লগইন যাবে। সেট থাকলে পাসওয়ার্ড লাগবে।</small>
+                    </div>
+                    <button type="submit" id="loginBtn" class="btn">লগইন করুন <i class="fa-solid fa-arrow-right-long"></i></button>
+                </form>
+                <div class="divider">অথবা</div>
+                <button type="button" id="btnGoogleLogin" class="btn google">
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt=""> Google দিয়ে চালিয়ে যান
+                </button>
+                <div class="foot">
+                    <p>নতুন অ্যাকাউন্ট? <a id="btnGoReg">রেজিস্ট্রেশন করুন</a></p>
+                    <p style="margin-top:8px;"><a id="btnGoForgot">Forget Password / পাসওয়ার্ড ভুলে গেছেন?</a></p>
+                </div>
+            </div>
 
-  <div id="profileSection" class="profile">
-    <img id="profilePhoto" class="photo" alt="প্রোফাইল ছবি" hidden>
-    <h1 id="profileName">ব্যবহারকারী</h1>
-    <div id="verBadge" class="verified">✓ সফলভাবে লগইন হয়েছে</div>
-    <div class="code"><small>আপনার ৮ সংখ্যার আইডি</small><b id="userCode">--------</b></div>
-    <div class="info">
-      <div class="row"><span class="label">নাম</span><div class="value" id="userName">—</div></div>
-      <div class="row"><span class="label">ইমেইল / ফোন</span><div class="value" id="userEmail">—</div></div>
-      <div class="row"><span class="label">UID</span><div class="value" id="userUid">—</div></div>
-    </div>
-    <div id="verifyBox" class="panel" hidden>
-      <button type="button" id="sendVerify" class="secondary">ইমেইল ভেরিফিকেশন পাঠান</button>
-      <button type="button" id="checkVerify" class="secondary">যাচাই করেছি, রিফ্রেশ করুন</button>
-    </div>
-    <div id="profileStatus" class="status" role="status"></div>
-    <button id="logoutButton" type="button" class="logout">লগআউট করুন</button>
-  </div>
+            <!-- REGISTER -->
+            <div id="reg" class="panel">
+                <form id="regForm">
+                    <div class="ib">
+                        <label>সম্পূর্ণ নাম</label>
+                        <div class="iw"><i class="fa-regular fa-user"></i>
+                            <input type="text" id="rName" autocomplete="name" placeholder="আপনার নাম" minlength="3" required>
+                        </div>
+                    </div>
+                    <div class="ib">
+                        <label>ইমেইল</label>
+                        <div class="iw"><i class="fa-regular fa-envelope"></i>
+                            <input type="email" id="rEmail" lang="en" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" placeholder="example@domain.com" required>
+                        </div>
+                    </div>
+                    <div class="ib">
+                        <label>জন্ম সাল (শুধু সাল)</label>
+                        <button type="button" id="btnPickYear" class="btn sec" style="margin-top:0;">
+                            <i class="fa-solid fa-cake-candles"></i> <span id="yearLabel">সাল নির্বাচন করুন</span>
+                        </button>
+                        <input type="hidden" id="rBirthYear" value="">
+                        <div id="yearPicker" style="display:none;">
+                            <div class="year-grid" id="yearGrid"></div>
+                            <div class="selected-year" id="yearSelectedText"></div>
+                        </div>
+                        <small class="help">৫ বছরের নিচে অ্যাকাউন্ট খোলা যাবে না।</small>
+                    </div>
+                    <div class="ib">
+                        <label>ইউআইডি (UID - ৮ সংখ্যা)</label>
+                        <div class="uid-row">
+                            <input type="text" id="rUid" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off" placeholder="৮ সংখ্যা" required>
+                            <button type="button" class="gbtn" id="btnGenUid"><i class="fa-solid fa-wand-magic-sparkles"></i> অটো</button>
+                        </div>
+                        <div id="uidErr" class="err">* ০ দিয়ে শুরু করা যাবে না!</div>
+                    </div>
+                    <div class="ib">
+                        <label>পাসওয়ার্ড <span style="font-weight:400;color:#94a3b8;">(ঐচ্ছিক)</span></label>
+                        <div class="iw"><i class="fa-solid fa-lock"></i>
+                            <input type="password" id="rPass" class="has-eye" autocomplete="new-password" placeholder="ঐচ্ছিক — পরে প্রোফাইল থেকেও সেট করা যায়" minlength="4">
+                            <button type="button" class="eye-btn" data-for="rPass"><i class="fa-regular fa-eye"></i></button>
+                        </div>
+                    </div>
+                    <button type="submit" id="regBtn" class="btn">ভেরিফিকেশন কোড পাঠান <i class="fa-solid fa-arrow-right"></i></button>
+                </form>
+                <div class="divider">অথবা</div>
+                <button type="button" id="btnGoogleReg" class="btn google">
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt=""> Google দিয়ে অ্যাকাউন্ট তৈরি
+                </button>
+                <div class="foot"><p>অ্যাকাউন্ট আছে? <a id="btnGoLogin">লগইন করুন</a></p></div>
+            </div>
 
-</section>
-<div class="footer">© <span id="year"></span> KR Calculator A<br><span style="font-size:11px">ডোমেইন: <b id="domainShow"></b> · সংস্করণ v10</span></div>
-</main>
+            <!-- YEAR (Google birth year if needed) -->
+            <div id="birthYear" class="panel">
+                <p style="font-size:13px;color:var(--muted);text-align:center;margin-bottom:12px;line-height:1.5;">
+                    Google অ্যাকাউন্টের জন্য জন্ম সাল নির্বাচন করুন (৫ বছরের নিচে অনুমোদিত নয়)।
+                </p>
+                <div class="year-grid" id="gYearGrid"></div>
+                <div class="selected-year" id="gYearSelectedText"></div>
+                <button type="button" id="btnConfirmGYear" class="btn" disabled>নিশ্চিত করুন</button>
+                <button type="button" class="btn sec" id="btnCancelGYear">বাতিল</button>
+            </div>
+
+            <!-- VERIFY -->
+            <div id="verify" class="panel">
+                <div style="text-align:center;padding:4px 0 8px;">
+                    <p style="font-size:13px;color:var(--muted);">ইমেইল: <strong id="vEmailDisplay" style="color:var(--green);">---</strong></p>
+                    <p style="font-size:13px;color:var(--muted);margin-top:8px;">টোকেন আইডি:</p>
+                    <div class="token-box" id="vTokenDisplay">------</div>
+                    <p style="font-size:12px;color:var(--muted);line-height:1.6;">৫ মিনিটের মধ্যে ইমেইলের কোড দিন।</p>
+                </div>
+                <form id="verifyForm">
+                    <div class="ib">
+                        <label>ভেরিফিকেশন কোড (৬ সংখ্যা)</label>
+                        <div class="iw"><i class="fa-solid fa-shield-halved"></i>
+                            <input type="text" id="vCodeInput" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="কোড" required>
+                        </div>
+                    </div>
+                    <button type="submit" id="verifyBtn" class="btn">নিশ্চিত করুন <i class="fa-solid fa-check"></i></button>
+                    <button type="button" class="btn sec" id="btnBackFromVerify">পিছনে যান</button>
+                </form>
+            </div>
+
+            <!-- FORGOT -->
+            <div id="forgot" class="panel">
+                <p style="font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:14px;text-align:center;">
+                    ইমেইল বা UID দিন। অ্যাকাউন্ট থাকলেই কোড যাবে।
+                </p>
+                <form id="forgotForm">
+                    <div class="ib">
+                        <label>ইমেইল অথবা UID</label>
+                        <div class="iw"><i class="fa-regular fa-envelope"></i>
+                            <input type="text" id="fInput" placeholder="email বা UID" required>
+                        </div>
+                    </div>
+                    <button type="submit" id="forgotBtn" class="btn">ভেরিফিকেশন কোড পাঠান</button>
+                    <button type="button" class="btn sec" id="btnBackFromForgot">পিছনে যান</button>
+                </form>
+            </div>
+
+            <!-- SUCCESS -->
+            <div id="success" class="panel">
+                <div class="success-box">
+                    <div class="big-icon">✅</div>
+                    <h3 id="successTitle">লগইন সফল!</h3>
+                    <p id="successMsg">অ্যাপে ফিরে যান — অটো লগইন হবে।</p>
+                    <button type="button" class="btn" id="btnReturnApp">অ্যাপে ফিরে যান 🚀</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
 <script>
-setTimeout(function () {
-  if (!window.__krReady) {
-    var el = document.getElementById("loginStatus");
-    el.textContent = "Firebase স্ক্রিপ্ট লোড হয়নি। ইন্টারনেট চালু আছে কিনা এবং Chrome (Incognito ট্যাব) ব্যবহার করছেন কিনা দেখুন। অ্যাড-ব্লকার বা ডেটা সেভার বন্ধ করুন।";
-    el.className = "status show error";
-  }
-}, 5000);
-</script>
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut,
-  createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, sendPasswordResetEmail,
-  RecaptchaVerifier, PhoneAuthProvider, signInWithPhoneNumber, linkWithCredential, updateProfile }
-  from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
-import { getDatabase, ref, get, update, serverTimestamp }
-  from "https://www.gstatic.com/firebasejs/11.10.0/firebase-database.js";
-
 const firebaseConfig = {
-  apiKey: "AIzaSyDUrso1G3orSxiZGTQ1vNYnmN0jdnJ3nSM",
-  authDomain: "kr-calculator-a-bc1e2.firebaseapp.com",
-  databaseURL: "https://kr-calculator-a-bc1e2-default-rtdb.firebaseio.com",
-  projectId: "kr-calculator-a-bc1e2",
-  storageBucket: "kr-calculator-a-bc1e2.firebasestorage.app",
-  messagingSenderId: "916522220428",
-  appId: "1:916522220428:web:b39f14d38c9fe45ecaf4a9",
-  measurementId: "G-K4XGHWM4QF"
+    apiKey: "AIzaSyDUrso1G3orSxiZGTQ1vNYnmN0jdnJ3nSM",
+    authDomain: "kr-calculator-a-bc1e2.firebaseapp.com",
+    projectId: "kr-calculator-a-bc1e2",
+    storageBucket: "kr-calculator-a-bc1e2.firebasestorage.app",
+    messagingSenderId: "916522220428",
+    appId: "1:916522220428:web:b39f14d38c9fe45ecaf4a9",
+    measurementId: "G-K4XGHWM4QF"
 };
-const HOSTED_URL = "https://kr-calculator-a-bc1e2.web.app";
-window.__krReady = true;
-const $ = id => document.getElementById(id);
-window.addEventListener("error", e => { status($("loginStatus"), "স্ক্রিপ্ট এরর: " + (e.message || "অজানা"), "error"); });
-window.addEventListener("unhandledrejection", e => { status($("loginStatus"), "এরর: " + (e.reason?.code || e.reason?.message || e.reason), "error"); });
-$("year").textContent = new Date().getFullYear();
-$("domainShow").textContent = location.hostname || location.protocol;
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const auth = firebase.auth();
 
-function status(el, msg, type = "info") { el.textContent = msg; el.className = "status show " + type; }
-function clearStatus(el) { el.textContent = ""; el.className = "status"; }
+const FIREBASE_COLLECTION_NAME = "KR pro math master";
+const APP_VERSION = "1.1.0.1";
+const INITIAL_NEW_USER_CREDITS = 5;
+const MAX_DEBT_CREDIT = 1;
+const MIN_AGE = 5;
+const EMAILJS_PUBLIC = "h6otK23mXSSYHsa0U";
+const EMAILJS_SERVICE = "service_afly37j";
+const EMAILJS_TEMPLATE = "template_c3khrm2";
+const KNOWN_VERSIONS = [APP_VERSION, "1.1.0.1", "1.0.1", "1.0.0", "1.0", "1"];
 
-/* ৮ সংখ্যার আইডি: UID থেকে তৈরি, প্রতিবার একই থাকে */
-function code8(uid) {
-  let h = 2166136261;
-  for (const c of uid) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; }
-  return String(10000000 + (h % 90000000));
+const PortalStorage = {
+    getSavedAccounts: () => { try { return JSON.parse(localStorage.getItem("kr_saved_accounts") || "[]"); } catch(e){ return []; } },
+    addSavedAccount: (u) => {
+        let list = PortalStorage.getSavedAccounts();
+        list = list.filter(x => x.user_profile?.email !== u.user_profile?.email && x.user_profile?.uid !== u.user_profile?.uid);
+        list.unshift(u);
+        localStorage.setItem("kr_saved_accounts", JSON.stringify(list));
+    },
+    setCur: (u) => { if (!u) localStorage.removeItem("kr_cur_user"); else localStorage.setItem("kr_cur_user", JSON.stringify(u)); },
+    cur: () => { try { return JSON.parse(localStorage.getItem("kr_cur_user") || "null"); } catch(e){ return null; } }
+};
+
+function toast(msg, type) {
+    const el = document.createElement("div");
+    el.className = "toast" + (type === "err" ? " err" : type === "info" ? " info" : "");
+    el.textContent = msg;
+    document.getElementById("toastWrap").appendChild(el);
+    setTimeout(() => { el.style.opacity = "0"; setTimeout(() => el.remove(), 400); }, 4500);
 }
-
-function showLogin() {
-  $("loginSection").hidden = false;
-  $("profileSection").classList.remove("active");
-  clearStatus($("profileStatus"));
-}
-
-function showProfile(user) {
-  $("loginSection").hidden = true;
-  $("profileSection").classList.add("active");
-  const name = user.displayName || (user.email ? user.email.split("@")[0] : "") || user.phoneNumber || "ব্যবহারকারী";
-  $("profileName").textContent = name;
-  $("userName").textContent = name;
-  $("userEmail").textContent = user.email || user.phoneNumber || "পাওয়া যায়নি";
-  const needVerify = user.providerData.some(x => x.providerId === "password") && !user.emailVerified && !user.phoneNumber;
-  $("verifyBox").hidden = !needVerify;
-  $("verBadge").textContent = needVerify ? "⚠ ইমেইল যাচাই বাকি" : "✓ সফলভাবে লগইন হয়েছে";
-  $("verBadge").className = "verified" + (needVerify ? " warn" : "");
-  $("userCode").textContent = code8(user.uid);
-  $("userUid").textContent = user.uid;
-  const img = $("profilePhoto");
-  if (user.photoURL) {
-    img.onerror = () => { img.hidden = true; };
-    img.src = user.photoURL;
-    img.hidden = false;
-  } else img.hidden = true;
-}
-
-/* ব্যাকগ্রাউন্ডে সেভ — স্ক্রিন আটকায় না */
-async function saveProfile(user) {
-  try {
-    const userRef = ref(window.db, "users/" + user.uid);
-    const snap = await get(userRef);
-    const data = {
-      uid: user.uid,
-      name: user.displayName || "",
-      email: user.email || "",
-      phone: user.phoneNumber || "",
-      photoURL: user.photoURL || "",
-      userCode: code8(user.uid),
-      provider: user.providerData[0]?.providerId || "unknown",
-      lastLoginAt: serverTimestamp()
+function goPanel(id) {
+    document.querySelectorAll(".panel").forEach(p => p.classList.remove("on"));
+    const t = document.getElementById(id); if (t) t.classList.add("on");
+    const map = {
+        login: ["লগইন / সাইন ইন", "ইমেইল+পাসওয়ার্ড, UID+পাসওয়ার্ড, বা Google।"],
+        reg: ["নতুন অ্যাকাউন্ট", "নাম, ইমেইল, জন্ম সাল ও UID।"],
+        verify: ["ভেরিফিকেশন", "৫ মিনিটের মধ্যে কোড দিন।"],
+        forgot: ["পাসওয়ার্ড পুনরুদ্ধার", "অ্যাকাউন্ট থাকলেই কোড যাবে।"],
+        birthYear: ["জন্ম সাল", "সাল নির্বাচন করুন।"],
+        success: ["সফল!", "অ্যাপে ফিরে যান।"]
     };
-    if (!snap.exists()) data.createdAt = serverTimestamp();
-    await update(userRef, data);
-  } catch (e) {
-    console.error("Profile save error:", e);
-    status($("profileStatus"), "লগইন সফল, কিন্তু প্রোফাইল সেভ হয়নি। Database Rules পরীক্ষা করুন।", "warning");
-  }
+    if (map[id]) { document.getElementById("heading").textContent = map[id][0]; document.getElementById("desc").textContent = map[id][1]; }
+}
+function setLoading(btn, on, text) {
+    if (!btn) return;
+    if (on) { if (!btn.dataset.orig) btn.dataset.orig = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> ' + (text || "..."); }
+    else { btn.disabled = false; if (btn.dataset.orig) { btn.innerHTML = btn.dataset.orig; delete btn.dataset.orig; } }
+}
+function maskEmail(email) {
+    if (!email || !email.includes("@")) return email || "—";
+    const [n,d] = email.split("@");
+    return n.length <= 3 ? n[0]+"***@"+d : n.slice(0,4)+"***"+n.slice(-2)+"@"+d;
+}
+function returnToApp() {
+    try { if (window.opener) { window.opener.focus(); window.close(); return; } } catch(e){}
+    try { window.close(); } catch(e){}
+    try { if (history.length > 1) history.back(); else toast("অ্যাপ খুলুন — লগইন সেভ হয়েছে।","info"); } catch(e){ toast("অ্যাপ খুলুন — লগইন সেভ হয়েছে।","info"); }
+}
+document.getElementById("btnReturnApp").addEventListener("click", returnToApp);
+
+/* Password hash (SHA-256) */
+async function hashPass(pw) {
+    if (!pw) return null;
+    const data = new TextEncoder().encode("kr#" + pw + "#salt");
+    const buf = await crypto.subtle.digest("SHA-256", data);
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,"0")).join("");
 }
 
-/* ফাইল ভুল জায়গা থেকে খুললে সাথে সাথে জানাবে, আটকে থাকবে না */
-const okProtocol = location.protocol === "http:" || location.protocol === "https:";
-if (!okProtocol) {
-  status($("loginStatus"),
-    "এই পেজ এখন ফোনের ফাইল/এডিটর (" + location.protocol + ") থেকে খোলা, তাই Google লগইন চলবে না।\nFirebase Hosting-এ আপলোড করে এই লিংকে খুলুন:\n" + HOSTED_URL, "warning");
-  
-} else {
-  if (/\.(web\.app|firebaseapp\.com)$/.test(location.hostname)) firebaseConfig.authDomain = location.hostname;
-  const app = initializeApp(firebaseConfig);
-  window.auth = getAuth(app);
-  window.db = getDatabase(app);
-  const auth = window.auth;
-  let registering = false, resetting = false;
+function userRef(uid, ver) {
+    return db.collection(FIREBASE_COLLECTION_NAME).doc(ver || APP_VERSION).collection("Users").doc(uid);
+}
+function blockedEmailRef(email) {
+    const key = String(email || "").toLowerCase().replace(/[.#$[\]]/g, "_");
+    return db.collection(FIREBASE_COLLECTION_NAME).doc(APP_VERSION).collection("BlockedEmails").doc(key);
+}
 
-  const provider = new GoogleAuthProvider();
-  provider.addScope("email");
-  provider.addScope("profile");
-  provider.setCustomParameters({ prompt: "select_account" });
-
-  let busy = false, timer = null;
-  const btn = $("googleLogin");
-  function setBusy(on) {
-    busy = on;
-    btn.disabled = on;
-    $("btnText").textContent = on ? "Google খুলছে..." : "Google দিয়ে চালিয়ে যান";
-    const sp = btn.querySelector(".loader"), ic = btn.querySelector("svg");
-    if (on) {
-      ic.hidden = true;
-      if (!sp) { const l = document.createElement("span"); l.className = "loader"; btn.prepend(l); }
-    } else {
-      if (sp) sp.remove();
-      ic.hidden = false;
-      clearTimeout(timer);
-    }
-  }
-
-  btn.addEventListener("click", async () => {
-    if (busy) return;
-    clearStatus($("loginStatus"));
-    setBusy(true);
-    /* সর্বোচ্চ ১০ সেকেন্ড — এরপর বাটন আবার চালু হবে, কখনো আটকে থাকবে না */
-    timer = setTimeout(() => {
-      setBusy(false);
-      status($("loginStatus"), "Google পেজ খোলেনি। আবার চেষ্টা করুন। সমস্যা থাকলে Chrome-এ " + HOSTED_URL + " লিংকে খুলুন।", "warning");
-    }, 10000);
+async function isEmailBlocked(email) {
+    if (!email) return false;
     try {
-      await signInWithPopup(auth, provider);
-    } catch (e) {
-      const c = e?.code || "";
-      if (c === "auth/popup-blocked" || c === "auth/operation-not-supported-in-this-environment" || c === "auth/web-storage-unsupported") {
-        try { await signInWithRedirect(auth, provider); return; } catch (e2) { e = e2; }
-      }
-      if (c !== "auth/popup-closed-by-user" && c !== "auth/cancelled-popup-request") {
-        const msgs = {
-          "auth/unauthorized-domain": "পেজটি এই ঠিকানা থেকে খোলা হয়েছে:\n" + location.origin + "\nএই ডোমেইন Firebase-এর Authorized domains তালিকায় নেই। ঠিক এই ডোমেইন (" + location.hostname + ") যোগ করুন, অথবা " + HOSTED_URL + " লিংকে খুলুন।",
-          "auth/operation-not-allowed": "Firebase Console → Authentication → Sign-in method-এ Google চালু করুন।",
-          "auth/network-request-failed": "ইন্টারনেট সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।"
-        };
-        status($("loginStatus"), msgs[e.code] || ("লগইন ব্যর্থ। কোড: " + (e.code || "unknown")), "error");
-      }
-      setBusy(false);
-    }
-  });
+        const s = await blockedEmailRef(email).get();
+        return s.exists && s.data().blocked === true;
+    } catch(e) { return false; }
+}
+async function blockEmail(email, reason) {
+    if (!email) return;
+    await blockedEmailRef(email).set({
+        email: email.toLowerCase(),
+        blocked: true,
+        reason: reason || "underage",
+        at: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+}
 
-  $("logoutButton").addEventListener("click", async () => {
-    try { await signOut(auth); } catch (e) { status($("profileStatus"), "লগআউট ব্যর্থ হয়েছে।", "error"); }
-  });
-
-  onAuthStateChanged(auth, user => {
-    if (registering || resetting) return;
-    if (!user) { showLogin(); return; }
-    setBusy(false);
-    showProfile(user);          // সাথে সাথে দেখাবে
-    saveProfile(user);          // পেছনে সেভ হবে
-  });
-
-  /* ---- ইমেইল / ফোন / ভেরিফিকেশন ---- */
-  const EMSG = {
-    "auth/invalid-credential": "ইমেইল বা পাসওয়ার্ড ভুল।",
-    "auth/invalid-email": "ইমেইল ঠিকানা সঠিক নয়।",
-    "auth/missing-password": "পাসওয়ার্ড লিখুন।",
-    "auth/email-already-in-use": "এই ইমেইলে আগেই অ্যাকাউন্ট আছে। লগইন করুন।",
-    "auth/weak-password": "পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের দিন।",
-    "auth/invalid-phone-number": "ফোন নম্বর সঠিক নয়। যেমন: 01XXXXXXXXX বা +8801XXXXXXXXX",
-    "auth/invalid-verification-code": "কোড ভুল। আবার দিন।",
-    "auth/code-expired": "কোডের সময় শেষ। নতুন কোড পাঠান।",
-    "auth/too-many-requests": "অনেকবার চেষ্টা হয়েছে। কিছুক্ষণ পরে চেষ্টা করুন।",
-    "auth/operation-not-allowed": "SMS পাঠানো যায়নি। Firebase Console → Authentication → Settings → SMS region policy-তে বাংলাদেশ (+880) অনুমোদন করুন। তারপরও না হলে Sign-in method-এ Phone ও Email/Password চালু আছে কিনা দেখুন।",
-    "auth/quota-exceeded": "আজকের SMS-এর সীমা (১০টি) শেষ। বিলিং প্ল্যান যোগ করুন অথবা Firebase-এর টেস্ট ফোন নম্বর ব্যবহার করুন।",
-    "auth/captcha-check-failed": "reCAPTCHA যাচাই ব্যর্থ। পেজ রিফ্রেশ করে আবার চেষ্টা করুন।",
-    "auth/invalid-app-credential": "reCAPTCHA বা অ্যাপ যাচাই ব্যর্থ। পেজ রিফ্রেশ করে আবার চেষ্টা করুন।",
-    "auth/billing-not-enabled": "ফোন কোডের জন্য Firebase প্রজেক্টে বিলিং প্ল্যান (Blaze) লাগবে।",
-    "auth/network-request-failed": "ইন্টারনেট সংযোগ পরীক্ষা করুন।",
-    "auth/credential-already-in-use": "এই ফোন নম্বর আগেই অন্য অ্যাকাউন্টে ব্যবহৃত হয়েছে।",
-    "auth/provider-already-linked": "এই ফোন নম্বর আগেই যুক্ত আছে।",
-    "app/nouser": "এই ফোন নম্বরে কোনো অ্যাকাউন্ট নেই।",
-    "app/mismatch": "এই ইমেইল ও ফোন নম্বর একই অ্যাকাউন্টের নয়।",
-    "app/missing": "নাম, ইমেইল, পাসওয়ার্ড ও ফোন নম্বর সব লিখুন।",
-    "app/timeout": "সময় শেষ। আবার চেষ্টা করুন।"
-  };
-  const showErr = (e, el = $("loginStatus")) => status(el, EMSG[e?.code] || ("এরর: " + (e?.code || e?.message || e)), "error");
-
-  /* বাটনে লোডিং আইকন; সর্বোচ্চ ২০ সেকেন্ড, এরপর নিজেই খুলে যাবে */
-  async function run(btn, label, fn, el = $("loginStatus")) {
-    if (btn.disabled) return;
-    const old = btn.textContent;
-    btn.disabled = true; btn.textContent = label; btn.classList.add("spin");
-    clearStatus(el);
+async function checkPermission(userData) {
+    // app_permission: false হলে লগইন বন্ধ (Firebase থেকে অ্যাডমিন তুলতে পারে)
+    const p = userData.user_profile || {};
+    if (p.app_permission === false || userData.app_permission === false) return false;
+    // Permission ডক
     try {
-      await Promise.race([fn(), new Promise((_, rej) => setTimeout(() => rej({ code: "app/timeout" }), 20000))]);
-    } catch (e) { showErr(e, el); }
-    finally { btn.disabled = false; btn.textContent = old; btn.classList.remove("spin"); }
-  }
+        const uid = p.uid;
+        const ver = userData.foundVersion || userData.version || APP_VERSION;
+        const ps = await userRef(uid, ver).collection("Permission").doc("app_Permission").get();
+        if (ps.exists && ps.data().allowed === false) return false;
+    } catch(e){}
+    return true;
+}
 
-  document.querySelectorAll(".tab").forEach(b => b.addEventListener("click", () => {
-    const p = $(b.dataset.p), open = p.hidden;
-    ["emailPanel", "regPanel", "forgotPanel"].forEach(id => { $(id).hidden = true; });
-    p.hidden = !open;
-  }));
+async function findUserByEmailOrUid(input) {
+    const val = String(input || "").trim();
+    if (!val) return null;
+    const isEmail = val.includes("@");
+    let uidCandidate = val;
+    if (!isEmail && !val.startsWith("KR-") && /^\d{8}$/.test(val)) uidCandidate = "KR-" + val;
+    if (!isEmail && val.startsWith("KR-")) uidCandidate = val;
 
-  const creds = () => {
-    const em = $("emailIn").value.trim(), pw = $("passIn").value;
-    if (!em) throw { code: "auth/invalid-email" };
-    return [em, pw];
-  };
+    for (const ver of KNOWN_VERSIONS) {
+        try {
+            if (!isEmail) {
+                const uref = userRef(uidCandidate, ver);
+                const ps = await uref.collection("Profile").doc("user_Profile").get();
+                if (ps.exists) {
+                    const p = ps.data() || {};
+                    p.uid = p.uid || uidCandidate;
+                    return await packUser(uref, p, ver);
+                }
+            }
+        } catch(e){}
+    }
+    if (isEmail) {
+        try {
+            const snap = await db.collectionGroup("Profile").where("email","==",val.toLowerCase()).limit(5).get();
+            for (const doc of snap.docs) {
+                const p = doc.data() || {};
+                const parts = doc.ref.path.split("/");
+                const uidIdx = parts.indexOf("Users");
+                const colIdx = parts.indexOf(FIREBASE_COLLECTION_NAME);
+                const ver = (colIdx >= 0 && parts[colIdx+1]) ? parts[colIdx+1] : APP_VERSION;
+                const uid = p.uid || (uidIdx >= 0 ? parts[uidIdx+1] : null);
+                if (!uid) continue;
+                p.uid = uid; p.email = p.email || val.toLowerCase();
+                return await packUser(userRef(uid, ver), p, ver);
+            }
+        } catch(e){ console.warn(e); }
+    }
+    return null;
+}
 
-  $("emailLogin").addEventListener("click", () => run($("emailLogin"), "লগইন হচ্ছে...", async () => {
-    const [em, pw] = creds();
-    if (!pw) throw { code: "auth/missing-password" };
-    await signInWithEmailAndPassword(auth, em, pw);
-  }));
-
-  /* ---- পাসওয়ার্ড ভুলে গেলে: ফোনে কোড → ইমেইলে লিংক ---- */
-  const normPhone = v => {
-    let n = v.replace(/[\s-]/g, "");
-    if (/^01\d{9}$/.test(n)) n = "+88" + n;
-    return /^\+\d{10,15}$/.test(n) ? n : null;
-  };
-  function countdown(el, done) {
-    let left = 300, t;
-    const tick = () => {
-      el.textContent = Math.floor(left / 60) + ":" + String(left % 60).padStart(2, "0");
-      if (left-- <= 0) { clearInterval(t); done(); }
+async function packUser(uref, p, ver) {
+    let credit = 0, debt = 0, avatar = null, isCircle = false, app_permission = true;
+    try {
+        const cs = await uref.collection("Credit").doc("app_Credit").get();
+        if (cs.exists) credit = Number(cs.data().user_credit) || 0;
+    } catch(e){}
+    try {
+        const ds = await uref.collection("Credit").doc("app_Debt").get();
+        if (ds.exists) debt = Number(ds.data().debt_credit) || 0;
+    } catch(e){}
+    try {
+        const bs = await uref.get();
+        if (bs.exists) {
+            avatar = bs.data().avatar || null;
+            isCircle = bs.data().isCircle ?? false;
+        }
+    } catch(e){}
+    try {
+        const perm = await uref.collection("Permission").doc("app_Permission").get();
+        if (perm.exists && perm.data().allowed === false) app_permission = false;
+    } catch(e){}
+    if (p.app_permission === false) app_permission = false;
+    return {
+        app: FIREBASE_COLLECTION_NAME, version: ver, foundVersion: ver,
+        user_profile: p, user_credit: credit, debt_credit: debt,
+        avatar, isCircle, app_permission
     };
-    t = setInterval(tick, 1000);
-    tick();
-    return t;
-  }
+}
 
-  $("forgotBtn").addEventListener("click", () => {
-    $("fgEmail").value = $("emailIn").value;
-    $("emailPanel").hidden = true;
-    $("forgotPanel").hidden = false;
-    clearStatus($("loginStatus"));
-  });
-  $("fgBack").addEventListener("click", () => {
-    $("forgotPanel").hidden = true;
-    $("emailPanel").hidden = false;
-    clearStatus($("loginStatus"));
-  });
-
-  let fgConf = null, fgTimer = null, fgRecap = null;
-  $("fgSend").addEventListener("click", () => run($("fgSend"), "কোড পাঠানো হচ্ছে...", async () => {
-    const em = $("fgEmail").value.trim(), ph = normPhone($("fgPhone").value);
-    if (!/@/.test(em)) throw { code: "auth/invalid-email" };
-    if (!ph) throw { code: "auth/invalid-phone-number" };
-    try { fgRecap?.clear(); } catch (_) {}
-    $("fgRecaptchaHolder").innerHTML = '<div id="fgRecaptchaEl"></div>';
-    try {
-      fgRecap = new RecaptchaVerifier(auth, "fgRecaptchaEl", { size: "invisible" });
-      fgConf = await signInWithPhoneNumber(auth, ph, fgRecap);
-    } catch (e) {
-      try { fgRecap?.clear(); } catch (_) {}
-      fgRecap = null;
-      $("fgRecaptchaHolder").innerHTML = "";
-      throw e;
+async function isUidTaken(uid) {
+    for (const ver of KNOWN_VERSIONS) {
+        try {
+            const ps = await userRef(uid, ver).collection("Profile").doc("user_Profile").get();
+            if (ps.exists) return true;
+        } catch(e){}
     }
-    $("fgCodeBox").hidden = false;
-    clearInterval(fgTimer);
-    fgTimer = countdown($("fgTimer"), () => {
-      fgConf = null;
-      $("fgCode").value = "";
-      $("fgCodeBox").hidden = true;
-      status($("loginStatus"), "কোডের মেয়াদ (৫ মিনিট) শেষ হয়েছে। নতুন কোড পাঠান।", "warning");
+    return false;
+}
+async function generateUniqueUid() {
+    for (let i = 0; i < 40; i++) {
+        const first = String(Math.floor(1 + Math.random()*9));
+        let rest = ""; for (let j=0;j<7;j++) rest += Math.floor(Math.random()*10);
+        const uid = "KR-" + first + rest;
+        if (!(await isUidTaken(uid))) return uid;
+    }
+    return "KR-" + String(Date.now()).slice(-8);
+}
+
+async function saveNewUserToFirebase(userData) {
+    const uid = userData.user_profile.uid;
+    const ver = APP_VERSION;
+    const uref = userRef(uid, ver);
+    const ts = firebase.firestore.FieldValue.serverTimestamp();
+    await uref.set({
+        uid, app: FIREBASE_COLLECTION_NAME, version: ver,
+        avatar: userData.avatar || null, isCircle: userData.isCircle ?? false, updatedAt: ts
+    }, { merge: true });
+    const prof = { ...userData.user_profile, uid, version: ver, app_permission: true };
+    await uref.collection("Profile").doc("user_Profile").set(prof, { merge: true });
+    await uref.collection("Credit").doc("app_Credit").set({
+        user_credit: userData.user_credit != null ? userData.user_credit : INITIAL_NEW_USER_CREDITS,
+        uid, version: ver, updatedAt: ts
+    }, { merge: true });
+    await uref.collection("Credit").doc("app_Debt").set({
+        debt_credit: 0, max_debt: MAX_DEBT_CREDIT, uid, version: ver, updatedAt: ts
+    }, { merge: true });
+    // অ্যাপ ব্যবহারের অনুমতি — অ্যাডমিন allowed:false করলে লগইন বন্ধ
+    await uref.collection("Permission").doc("app_Permission").set({
+        allowed: true, uid, email: userData.user_profile.email || "",
+        version: ver, updatedAt: ts
+    }, { merge: true });
+}
+
+function finishLogin(userData, title) {
+    userData.version = userData.foundVersion || userData.version || APP_VERSION;
+    userData.app = FIREBASE_COLLECTION_NAME;
+    // পাসওয়ার্ড হ্যাশ ক্লায়েন্টে রাখি না
+    if (userData.user_profile) {
+        const copy = { ...userData.user_profile };
+        delete copy.password_hash;
+        userData.user_profile = copy;
+    }
+    PortalStorage.setCur(userData);
+    PortalStorage.addSavedAccount(userData);
+    try { localStorage.setItem("kr_user_uid", userData.user_profile.uid); } catch(e){}
+    document.getElementById("successTitle").textContent = title || "লগইন সফল!";
+    document.getElementById("successMsg").textContent =
+        "অ্যাপে ফিরে গেলে অটো লগইন হবে।\nUID: " + (userData.user_profile.uid || "");
+    goPanel("success");
+    toast("সফল! অ্যাপে ফিরে যান।", "ok");
+    setTimeout(() => { try { if (window.opener) { window.opener.focus(); window.close(); } } catch(e){} }, 1200);
+}
+
+let pending = null, realVerifyCode = "", realTokenId = "", codeExpireTime = 0, verifyMode = "reg";
+let pendingGoogle = null, gSelectedYear = null;
+
+async function sendVerifyEmail(name, email, uid) {
+    realVerifyCode = String(Math.floor(100000 + Math.random()*900000));
+    realTokenId = String(Math.floor(100000 + Math.random()*900000));
+    codeExpireTime = Date.now() + 5*60*1000;
+    emailjs.init(EMAILJS_PUBLIC);
+    await emailjs.send(EMAILJS_SERVICE, EMAILJS_TEMPLATE, {
+        user_name: name || "User", app_name: FIREBASE_COLLECTION_NAME,
+        token_id: realTokenId, verification_code: realVerifyCode, uid_with_kr: uid || "",
+        time: new Date().toLocaleString("bn-BD"), to_email: email, to_name: name || "User",
+        from_name: "KR Pure Application BD"
     });
-    status($("loginStatus"), "SMS-এ কোড পাঠানো হয়েছে। ৫ মিনিটের মধ্যে দিন।", "success");
-  }));
-
-  $("fgVerify").addEventListener("click", () => run($("fgVerify"), "যাচাই হচ্ছে...", async () => {
-    if (!fgConf) throw { code: "auth/code-expired" };
-    const em = $("fgEmail").value.trim();
-    resetting = true;
-    try {
-      const user = (await fgConf.confirm($("fgCode").value.trim())).user;
-      if (!user.email) {                      // এই নম্বরে আগে অ্যাকাউন্ট ছিল না
-        try { await user.delete(); } catch (_) { await signOut(auth); }
-        throw { code: "app/nouser" };
-      }
-      if (user.email.toLowerCase() !== em.toLowerCase()) {
-        await signOut(auth);
-        throw { code: "app/mismatch" };
-      }
-      await signOut(auth);
-      await sendPasswordResetEmail(auth, em);
-      clearInterval(fgTimer);
-      fgConf = null;
-      $("fgCode").value = "";
-      $("fgCodeBox").hidden = true;
-      status($("loginStatus"), "ফোন যাচাই সম্পন্ন। ইমেইলে লিংক পাঠানো হয়েছে (স্প্যাম ফোল্ডারও দেখুন)। লিংকে চেপে নতুন পাসওয়ার্ড দিয়ে তারপর লগইন করুন।", "success");
-    } finally {
-      resetting = false;
-      if (!auth.currentUser) showLogin();
-    }
-  }));
-
-  $("sendVerify").addEventListener("click", () => run($("sendVerify"), "পাঠানো হচ্ছে...", async () => {
-    await sendEmailVerification(auth.currentUser);
-    status($("profileStatus"), "ভেরিফিকেশন ইমেইল পাঠানো হয়েছে। লিংকে চাপার পর নিচের রিফ্রেশ বাটন চাপুন।", "success");
-  }, $("profileStatus")));
-
-  $("checkVerify").addEventListener("click", () => run($("checkVerify"), "দেখা হচ্ছে...", async () => {
-    await auth.currentUser.reload();
-    showProfile(auth.currentUser);
-    status($("profileStatus"), auth.currentUser.emailVerified ? "ইমেইল যাচাই সম্পন্ন।" : "এখনো যাচাই হয়নি। ইমেইলের লিংকে চাপুন।", auth.currentUser.emailVerified ? "success" : "warning");
-  }, $("profileStatus")));
-
-  let verId = null, expTimer = null, recaptcha = null;
-  function startExpiry() {
-    clearInterval(expTimer);
-    let left = 300;
-    const tick = () => {
-      $("timerShow").textContent = Math.floor(left / 60) + ":" + String(left % 60).padStart(2, "0");
-      if (left-- <= 0) {
-        clearInterval(expTimer);
-        verId = null;
-        $("codeIn").value = "";
-        $("codeBox").hidden = true;
-        status($("loginStatus"), "কোডের মেয়াদ (৫ মিনিট) শেষ হয়েছে। নতুন কোড পাঠান।", "warning");
-      }
-    };
-    tick();
-    expTimer = setInterval(tick, 1000);
-  }
-
-  const regData = () => {
-    const name = $("regName").value.trim(), em = $("regEmail").value.trim(), pw = $("regPass").value;
-    let ph = $("phoneIn").value.replace(/[\s-]/g, "");
-    if (!name || !em || !pw || !ph) throw { code: "app/missing" };
-    if (!/@/.test(em)) throw { code: "auth/invalid-email" };
-    if (pw.length < 6) throw { code: "auth/weak-password" };
-    if (/^01\d{9}$/.test(ph)) ph = "+88" + ph;
-    if (!/^\+\d{10,15}$/.test(ph)) throw { code: "auth/invalid-phone-number" };
-    return { name, em, pw, ph };
-  };
-
-  $("sendCode").addEventListener("click", () => run($("sendCode"), "কোড পাঠানো হচ্ছে...", async () => {
-    const d = regData();
-    try { recaptcha?.clear(); } catch (_) {}
-    $("recaptchaHolder").innerHTML = '<div id="recaptchaEl"></div>';
-    try {
-      recaptcha = new RecaptchaVerifier(auth, "recaptchaEl", { size: "invisible" });
-      verId = await new PhoneAuthProvider(auth).verifyPhoneNumber(d.ph, recaptcha);
-    } catch (e) {
-      try { recaptcha?.clear(); } catch (_) {}
-      recaptcha = null;
-      $("recaptchaHolder").innerHTML = "";
-      throw e;
-    }
-    $("codeBox").hidden = false;
-    startExpiry();
-    status($("loginStatus"), "SMS-এ কোড পাঠানো হয়েছে। ৫ মিনিটের মধ্যে কোডটি দিন।", "success");
-  }));
-
-  $("verifyCode").addEventListener("click", () => run($("verifyCode"), "অ্যাকাউন্ট তৈরি হচ্ছে...", async () => {
-    if (!verId) throw { code: "auth/code-expired" };
-    const d = regData();
-    registering = true;
-    let created = null;
-    try {
-      created = (await createUserWithEmailAndPassword(auth, d.em, d.pw)).user;
-      await linkWithCredential(created, PhoneAuthProvider.credential(verId, $("codeIn").value.trim()));
-      await updateProfile(created, { displayName: d.name });
-      clearInterval(expTimer);
-      verId = null;
-      registering = false;
-      showProfile(auth.currentUser);
-      saveProfile(auth.currentUser);
-      status($("profileStatus"), "অ্যাকাউন্ট তৈরি হয়েছে। স্বাগতম, " + d.name + "!", "success");
-    } catch (e) {
-      /* কোড ভুল হলে আধা-তৈরি অ্যাকাউন্ট মুছে ফেলা হয় */
-      if (created) { try { await created.delete(); } catch (_) {} }
-      registering = false;
-      if (!auth.currentUser) showLogin();
-      throw e;
-    }
-  }));
-
-  getRedirectResult(auth).catch(() => {});
 }
+
+/* Year pickers */
+function buildYearGrid(containerId, onSelect) {
+    const grid = document.getElementById(containerId);
+    grid.innerHTML = "";
+    const cy = new Date().getFullYear();
+    for (let y = cy; y >= cy - 100; y--) {
+        const b = document.createElement("button");
+        b.type = "button"; b.className = "year-btn"; b.textContent = y;
+        b.addEventListener("click", () => {
+            grid.querySelectorAll(".year-btn").forEach(x => x.classList.remove("sel"));
+            b.classList.add("sel");
+            onSelect(y);
+        });
+        grid.appendChild(b);
+    }
+}
+buildYearGrid("yearGrid", (y) => {
+    document.getElementById("rBirthYear").value = y;
+    document.getElementById("yearLabel").textContent = "সাল: " + y;
+    document.getElementById("yearSelectedText").textContent = "নির্বাচিত: " + y;
+});
+buildYearGrid("gYearGrid", (y) => {
+    gSelectedYear = y;
+    document.getElementById("gYearSelectedText").textContent = "নির্বাচিত: " + y;
+    document.getElementById("btnConfirmGYear").disabled = false;
+});
+
+document.getElementById("btnPickYear").addEventListener("click", () => {
+    const el = document.getElementById("yearPicker");
+    el.style.display = el.style.display === "none" ? "block" : "none";
+});
+
+function ageFromYear(year) {
+    return new Date().getFullYear() - Number(year);
+}
+
+/* Eye toggles */
+document.querySelectorAll(".eye-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+        const inp = document.getElementById(btn.getAttribute("data-for"));
+        if (!inp) return;
+        inp.type = inp.type === "password" ? "text" : "password";
+        btn.innerHTML = inp.type === "password" ? '<i class="fa-regular fa-eye"></i>' : '<i class="fa-regular fa-eye-slash"></i>';
+    });
+});
+
+/* Nav */
+document.getElementById("btnGoReg").addEventListener("click", () => goPanel("reg"));
+document.getElementById("btnGoLogin").addEventListener("click", () => goPanel("login"));
+document.getElementById("btnGoForgot").addEventListener("click", () => goPanel("forgot"));
+document.getElementById("btnBackFromVerify").addEventListener("click", () => goPanel(verifyMode === "forgot" ? "forgot" : verifyMode === "login" ? "login" : "reg"));
+document.getElementById("btnBackFromForgot").addEventListener("click", () => goPanel("login"));
+document.getElementById("btnCancelGYear").addEventListener("click", () => { pendingGoogle = null; goPanel("login"); });
+
+document.getElementById("btnGenUid").addEventListener("click", async () => {
+    const btn = document.getElementById("btnGenUid");
+    btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+    const uid = await generateUniqueUid();
+    document.getElementById("rUid").value = uid.replace(/^KR-/, "");
+    document.getElementById("uidErr").style.display = "none";
+    btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> অটো';
+});
+
+/* REGISTER */
+document.getElementById("regForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const name = document.getElementById("rName").value.trim();
+    const email = document.getElementById("rEmail").value.trim().toLowerCase();
+    const rawUid = document.getElementById("rUid").value.trim();
+    const birthYear = document.getElementById("rBirthYear").value;
+    const pass = document.getElementById("rPass").value;
+    if (name.length < 3) { toast("নামে কমপক্ষে ৩ অক্ষর!", "err"); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast("সঠিক ইমেইল!", "err"); return; }
+    if (!birthYear) { toast("জন্ম সাল নির্বাচন করুন!", "err"); return; }
+    if (ageFromYear(birthYear) < MIN_AGE) {
+        await blockEmail(email, "underage_" + birthYear);
+        toast("৫ বছরের নিচে অ্যাকাউন্ট খোলা যাবে না। এই ইমেইল ব্লক করা হয়েছে।", "err");
+        return;
+    }
+    if (await isEmailBlocked(email)) { toast("এই ইমেইল ব্লক করা আছে।", "err"); return; }
+    if (rawUid.length !== 8 || rawUid.startsWith("0")) {
+        document.getElementById("uidErr").style.display = "block";
+        toast("UID ৮ সংখ্যা, ০ দিয়ে শুরু নয়!", "err"); return;
+    }
+    if (pass && pass.length < 4) { toast("পাসওয়ার্ড কমপক্ষে ৪ অক্ষর!", "err"); return; }
+    const uid = "KR-" + rawUid;
+    const regBtn = document.getElementById("regBtn");
+    setLoading(regBtn, true, "যাচাই...");
+    try {
+        if (await isUidTaken(uid)) { toast("UID ইতিমধ্যে ব্যবহৃত!", "err"); setLoading(regBtn, false); return; }
+        if (await findUserByEmailOrUid(email)) { toast("এই ইমেইলে অ্যাকাউন্ট আছে!", "err"); setLoading(regBtn, false); return; }
+        const password_hash = pass ? await hashPass(pass) : null;
+        pending = {
+            app: FIREBASE_COLLECTION_NAME, version: APP_VERSION, foundVersion: APP_VERSION,
+            user_profile: {
+                name, email, uid, birth_year: Number(birthYear),
+                joined: new Date().toLocaleDateString("bn-BD"), version: APP_VERSION,
+                app_permission: true, password_hash
+            },
+            user_credit: INITIAL_NEW_USER_CREDITS, debt_credit: 0, avatar: null, isCircle: false, isNewAccount: true
+        };
+        verifyMode = "reg";
+        await sendVerifyEmail(name, email, uid);
+        document.getElementById("vEmailDisplay").textContent = maskEmail(email);
+        document.getElementById("vTokenDisplay").textContent = realTokenId;
+        document.getElementById("vCodeInput").value = "";
+        goPanel("verify");
+        toast("কোড পাঠানো হয়েছে!", "ok");
+    } catch(err) { console.error(err); toast("কোড পাঠানো যায়নি।", "err"); }
+    setLoading(regBtn, false);
+});
+
+/* LOGIN */
+document.getElementById("loginForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const inputVal = document.getElementById("lInput").value.trim();
+    const pass = document.getElementById("lPass").value;
+    if (!inputVal) { toast("ইমেইল বা UID দিন!", "err"); return; }
+    const loginBtn = document.getElementById("loginBtn");
+    setLoading(loginBtn, true, "খোঁজা...");
+    try {
+        if (inputVal.includes("@") && await isEmailBlocked(inputVal.toLowerCase())) {
+            toast("এই ইমেইল ব্লক করা আছে।", "err"); setLoading(loginBtn, false); return;
+        }
+        const userData = await findUserByEmailOrUid(inputVal);
+        if (!userData || !userData.user_profile?.uid) {
+            toast("অ্যাকাউন্ট পাওয়া যায়নি!", "err"); setLoading(loginBtn, false); return;
+        }
+        if (!(await checkPermission(userData))) {
+            toast("অ্যাপ ব্যবহারের অনুমতি নেই। অ্যাডমিনের সাথে যোগাযোগ করুন।", "err");
+            setLoading(loginBtn, false); return;
+        }
+        const email = (userData.user_profile.email || "").toLowerCase();
+        if (email && await isEmailBlocked(email)) {
+            toast("এই ইমেইল ব্লক করা আছে।", "err"); setLoading(loginBtn, false); return;
+        }
+        const storedHash = userData.user_profile.password_hash || null;
+        if (storedHash) {
+            // পাসওয়ার্ড সেট আছে → অবশ্যই মিলাতে হবে
+            if (!pass) { toast("এই অ্যাকাউন্টে পাসওয়ার্ড সেট আছে। পাসওয়ার্ড দিন।", "err"); setLoading(loginBtn, false); return; }
+            const h = await hashPass(pass);
+            if (h !== storedHash) { toast("পাসওয়ার্ড ভুল!", "err"); setLoading(loginBtn, false); return; }
+            finishLogin(userData, "লগইন সফল!");
+        } else {
+            // পাসওয়ার্ড নেই → ইমেইল থাকলে কোড, নইলে সরাসরি
+            if (pass) {
+                toast("এই অ্যাকাউন্টে এখনো পাসওয়ার্ড সেট নেই। খালি রেখে লগইন করুন বা প্রোফাইল থেকে সেট করুন।", "err");
+                setLoading(loginBtn, false); return;
+            }
+            if (email && email.includes("@")) {
+                pending = userData; pending.isNewAccount = false; verifyMode = "login";
+                await sendVerifyEmail(userData.user_profile.name || "User", email, userData.user_profile.uid);
+                document.getElementById("vEmailDisplay").textContent = maskEmail(email);
+                document.getElementById("vTokenDisplay").textContent = realTokenId;
+                document.getElementById("vCodeInput").value = "";
+                goPanel("verify");
+                toast("ভেরিফিকেশন কোড পাঠানো হয়েছে!", "ok");
+            } else {
+                finishLogin(userData, "লগইন সফল!");
+            }
+        }
+    } catch(err) { console.error(err); toast("লগইন ব্যর্থ।", "err"); }
+    setLoading(loginBtn, false);
+});
+
+/* FORGOT */
+document.getElementById("forgotForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const inputVal = document.getElementById("fInput").value.trim();
+    if (!inputVal) { toast("ইমেইল বা UID দিন!", "err"); return; }
+    const forgotBtn = document.getElementById("forgotBtn");
+    setLoading(forgotBtn, true, "খোঁজা...");
+    try {
+        const userData = await findUserByEmailOrUid(inputVal);
+        if (!userData || !userData.user_profile?.uid) {
+            toast("অ্যাকাউন্ট নেই — কোড পাঠানো হয়নি।", "err"); setLoading(forgotBtn, false); return;
+        }
+        if (!(await checkPermission(userData))) {
+            toast("অনুমতি নেই।", "err"); setLoading(forgotBtn, false); return;
+        }
+        const email = userData.user_profile.email;
+        if (!email || !email.includes("@")) {
+            toast("ইমেইল নেই — কোড যায় না।", "err"); setLoading(forgotBtn, false); return;
+        }
+        pending = userData; pending.isNewAccount = false; verifyMode = "forgot";
+        await sendVerifyEmail(userData.user_profile.name || "User", email, userData.user_profile.uid);
+        document.getElementById("vEmailDisplay").textContent = maskEmail(email);
+        document.getElementById("vTokenDisplay").textContent = realTokenId;
+        document.getElementById("vCodeInput").value = "";
+        goPanel("verify");
+        toast("কোড পাঠানো হয়েছে!", "ok");
+    } catch(err) { toast("ব্যর্থ।", "err"); }
+    setLoading(forgotBtn, false);
+});
+
+/* VERIFY */
+document.getElementById("verifyForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const code = document.getElementById("vCodeInput").value.trim();
+    if (Date.now() > codeExpireTime || !realVerifyCode) { toast("কোডের মেয়াদ শেষ!", "err"); return; }
+    if (code !== realVerifyCode) { toast("কোড ভুল!", "err"); return; }
+    if (!pending) { toast("সেশন শেষ।", "err"); goPanel("login"); return; }
+    const verifyBtn = document.getElementById("verifyBtn");
+    setLoading(verifyBtn, true, "সংরক্ষণ...");
+    try {
+        if (pending.isNewAccount) {
+            await saveNewUserToFirebase(pending);
+            finishLogin(pending, "অ্যাকাউন্ট তৈরি হয়েছে!");
+        } else if (verifyMode === "forgot") {
+            // forgot: clear password so they can set new from app, or login
+            try {
+                const uid = pending.user_profile.uid;
+                const ver = pending.foundVersion || APP_VERSION;
+                await userRef(uid, ver).collection("Profile").doc("user_Profile").set({ password_hash: null }, { merge: true });
+                pending.user_profile.password_hash = null;
+            } catch(e){}
+            finishLogin(pending, "পুনরুদ্ধার সফল! প্রোফাইল থেকে নতুন পাসওয়ার্ড সেট করুন।");
+        } else {
+            finishLogin(pending, "লগইন সফল!");
+        }
+    } catch(err) { console.error(err); toast("সেভ ব্যর্থ।", "err"); }
+    setLoading(verifyBtn, false);
+});
+
+/* GOOGLE */
+async function handleGoogle() {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: "select_account" });
+    try {
+        const result = await auth.signInWithPopup(provider);
+        const gUser = result.user;
+        if (!gUser) { toast("Google ব্যর্থ।", "err"); return; }
+        const email = (gUser.email || "").toLowerCase();
+        const name = gUser.displayName || (email ? email.split("@")[0] : "ইউজার");
+        const photo = gUser.photoURL || null;
+        if (email && await isEmailBlocked(email)) { toast("এই ইমেইল ব্লক।", "err"); return; }
+
+        let existing = email ? await findUserByEmailOrUid(email) : null;
+        if (existing && existing.user_profile?.uid) {
+            if (!(await checkPermission(existing))) { toast("অনুমতি নেই।", "err"); return; }
+            if (photo && !existing.avatar) existing.avatar = photo;
+            finishLogin(existing, "Google লগইন সফল!");
+            return;
+        }
+        // নতুন — জন্ম সাল লাগবে
+        pendingGoogle = { email, name, photo };
+        gSelectedYear = null;
+        document.getElementById("gYearSelectedText").textContent = "";
+        document.getElementById("btnConfirmGYear").disabled = true;
+        document.getElementById("gYearGrid").querySelectorAll(".year-btn").forEach(x => x.classList.remove("sel"));
+        goPanel("birthYear");
+    } catch(err) {
+        console.error(err);
+        if (err.code === "auth/popup-closed-by-user") toast("পপআপ বন্ধ।", "err");
+        else if (err.code === "auth/unauthorized-domain") toast("ডোমেইন Firebase Auth-এ যোগ করুন।", "err");
+        else toast("Google ব্যর্থ: " + (err.message || ""), "err");
+    }
+}
+document.getElementById("btnGoogleLogin").addEventListener("click", handleGoogle);
+document.getElementById("btnGoogleReg").addEventListener("click", handleGoogle);
+
+document.getElementById("btnConfirmGYear").addEventListener("click", async () => {
+    if (!pendingGoogle || !gSelectedYear) return;
+    const { email, name, photo } = pendingGoogle;
+    if (ageFromYear(gSelectedYear) < MIN_AGE) {
+        if (email) await blockEmail(email, "underage_" + gSelectedYear);
+        toast("৫ বছরের নিচে অ্যাকাউন্ট নয়। ইমেইল ব্লক।", "err");
+        pendingGoogle = null; goPanel("login"); return;
+    }
+    const btn = document.getElementById("btnConfirmGYear");
+    setLoading(btn, true, "তৈরি...");
+    try {
+        const uid = await generateUniqueUid();
+        const userData = {
+            app: FIREBASE_COLLECTION_NAME, version: APP_VERSION, foundVersion: APP_VERSION,
+            user_profile: {
+                name, email, uid, birth_year: gSelectedYear,
+                joined: new Date().toLocaleDateString("bn-BD"), version: APP_VERSION,
+                app_permission: true, google: true, password_hash: null
+            },
+            user_credit: INITIAL_NEW_USER_CREDITS, debt_credit: 0,
+            avatar: photo, isCircle: true, isNewAccount: true
+        };
+        await saveNewUserToFirebase(userData);
+        pendingGoogle = null;
+        finishLogin(userData, "Google অ্যাকাউন্ট তৈরি হয়েছে!");
+    } catch(err) { console.error(err); toast("তৈরি ব্যর্থ।", "err"); }
+    setLoading(btn, false);
+});
+
+document.addEventListener("DOMContentLoaded", () => {
+    const cur = PortalStorage.cur();
+    if (cur && cur.user_profile?.uid) {
+        document.getElementById("successTitle").textContent = "ইতিমধ্যে লগইন আছেন";
+        document.getElementById("successMsg").textContent = "UID: " + cur.user_profile.uid;
+        goPanel("success");
+    }
+});
 </script>
 </body>
 </html>
