@@ -237,6 +237,7 @@
                     <h3 id="successTitle">লগইন সফল!</h3>
                     <p id="successMsg">অ্যাপে ফিরে যান — অটো লগইন হবে।</p>
                     <button type="button" class="btn" id="btnReturnApp">অ্যাপে ফিরে যান 🚀</button>
+                    <button type="button" class="btn sec" id="btnSwitchAcc">অন্য অ্যাকাউন্টে লগইন</button>
                 </div>
             </div>
         </div>
@@ -290,6 +291,22 @@ const PortalStorage = {
     cur: () => { try { return JSON.parse(localStorage.getItem("kr_cur_user") || "null"); } catch(e){ return null; } }
 };
 
+/* অ্যাপ লগইন পেজ খোলার সময় ?sid=... দেয়। লগইন সফল হলে Firebase-এ সেই সেশনে UID লিখি — অ্যাপ সেটা দেখে নিজে লগইন করে। */
+const KR_SID = (function() {
+    try { const v = new URLSearchParams(location.search).get("sid"); return /^[a-f0-9]{16,64}$/i.test(v || "") ? v : null; } catch (e) { return null; }
+})();
+async function writeLoginSession(userData) {
+    if (!KR_SID || !userData || !userData.user_profile || !userData.user_profile.uid) return;
+    try {
+        await db.collection(FIREBASE_COLLECTION_NAME).doc(APP_VERSION).collection("LoginSessions").doc(KR_SID).set({
+            uid: userData.user_profile.uid,
+            ver: userData.foundVersion || userData.version || APP_VERSION,
+            at: firebase.firestore.FieldValue.serverTimestamp(),
+            expiresAt: Date.now() + 15 * 60 * 1000
+        });
+    } catch (e) { console.warn("[KR] লগইন সেশন লেখা যায়নি:", e && e.message); }
+}
+
 function toast(msg, type) {
     const el = document.createElement("div");
     el.className = "toast" + (type === "err" ? " err" : type === "info" ? " info" : "");
@@ -320,12 +337,14 @@ function maskEmail(email) {
     const [n,d] = email.split("@");
     return n.length <= 3 ? n[0]+"***@"+d : n.slice(0,4)+"***"+n.slice(-2)+"@"+d;
 }
-function returnToApp() {
+async function returnToApp() {
+    try { await Promise.race([writeLoginSession(PortalStorage.cur()), new Promise(r => setTimeout(r, 4000))]); } catch(e){}
     try { if (window.opener) { window.opener.focus(); window.close(); return; } } catch(e){}
     try { window.close(); } catch(e){}
     try { if (history.length > 1) history.back(); else toast("অ্যাপ খুলুন — লগইন সেভ হয়েছে।","info"); } catch(e){ toast("অ্যাপ খুলুন — লগইন সেভ হয়েছে।","info"); }
 }
 document.getElementById("btnReturnApp").addEventListener("click", returnToApp);
+document.getElementById("btnSwitchAcc").addEventListener("click", () => { PortalStorage.setCur(null); goPanel("login"); });
 
 /* Password hash (SHA-256) */
 async function hashPass(pw) {
@@ -336,6 +355,15 @@ async function hashPass(pw) {
 }
 
 function userRef(uid, ver) {
+    // ফ্ল্যাট প্রাইমারি: KR pro math master / {UID}
+    // ver দেওয়া থাকলে লেগাসি পাথ (মাইগ্রেশন)
+    if (ver && ver !== 'flat' && ver !== APP_VERSION) {
+        return db.collection(FIREBASE_COLLECTION_NAME).doc(ver).collection("Users").doc(uid);
+    }
+    // নতুন স্ট্রাকচার — সরাসরি UID
+    return db.collection(FIREBASE_COLLECTION_NAME).doc(uid);
+}
+function userRefLegacy(uid, ver) {
     return db.collection(FIREBASE_COLLECTION_NAME).doc(ver || APP_VERSION).collection("Users").doc(uid);
 }
 function blockedEmailRef(email) {
@@ -382,18 +410,29 @@ async function findUserByEmailOrUid(input) {
     if (!isEmail && !val.startsWith("KR-") && /^\d{8}$/.test(val)) uidCandidate = "KR-" + val;
     if (!isEmail && val.startsWith("KR-")) uidCandidate = val;
 
-    for (const ver of KNOWN_VERSIONS) {
+    if (!isEmail) {
+        // ফ্ল্যাট আগে
         try {
-            if (!isEmail) {
-                const uref = userRef(uidCandidate, ver);
+            const uref = db.collection(FIREBASE_COLLECTION_NAME).doc(uidCandidate);
+            const ps = await uref.collection("Profile").doc("user_Profile").get();
+            if (ps.exists) {
+                const p = ps.data() || {};
+                p.uid = p.uid || uidCandidate;
+                return await packUser(uref, p, 'flat');
+            }
+        } catch(e){}
+        // লেগাসি ভার্সন
+        for (const ver of KNOWN_VERSIONS) {
+            try {
+                const uref = userRefLegacy(uidCandidate, ver);
                 const ps = await uref.collection("Profile").doc("user_Profile").get();
                 if (ps.exists) {
                     const p = ps.data() || {};
                     p.uid = p.uid || uidCandidate;
                     return await packUser(uref, p, ver);
                 }
-            }
-        } catch(e){}
+            } catch(e){}
+        }
     }
     if (isEmail) {
         try {
@@ -445,9 +484,15 @@ async function packUser(uref, p, ver) {
 }
 
 async function isUidTaken(uid) {
+    // ফ্ল্যাট
+    try {
+        const ps = await db.collection(FIREBASE_COLLECTION_NAME).doc(uid).collection("Profile").doc("user_Profile").get();
+        if (ps.exists) return true;
+    } catch(e){}
+    // লেগাসি
     for (const ver of KNOWN_VERSIONS) {
         try {
-            const ps = await userRef(uid, ver).collection("Profile").doc("user_Profile").get();
+            const ps = await userRefLegacy(uid, ver).collection("Profile").doc("user_Profile").get();
             if (ps.exists) return true;
         } catch(e){}
     }
@@ -466,7 +511,8 @@ async function generateUniqueUid() {
 async function saveNewUserToFirebase(userData) {
     const uid = userData.user_profile.uid;
     const ver = APP_VERSION;
-    const uref = userRef(uid, ver);
+    // সরাসরি UID ডক — ভার্সন ডকের নিচে Users নয়
+    const uref = db.collection(FIREBASE_COLLECTION_NAME).doc(uid);
     const ts = firebase.firestore.FieldValue.serverTimestamp();
     await uref.set({
         uid, app: FIREBASE_COLLECTION_NAME, version: ver,
@@ -481,7 +527,6 @@ async function saveNewUserToFirebase(userData) {
     await uref.collection("Credit").doc("app_Debt").set({
         debt_credit: 0, max_debt: MAX_DEBT_CREDIT, uid, version: ver, updatedAt: ts
     }, { merge: true });
-    // অ্যাপ ব্যবহারের অনুমতি — অ্যাডমিন allowed:false করলে লগইন বন্ধ
     await uref.collection("Permission").doc("app_Permission").set({
         allowed: true, uid, email: userData.user_profile.email || "",
         version: ver, updatedAt: ts
@@ -561,6 +606,7 @@ async function finishLogin(userData, title) {
     try {
         await Promise.race([ensureUserCollections(userData), new Promise(r => setTimeout(r, 6000))]);
     } catch(e){}
+    try { await Promise.race([writeLoginSession(userData), new Promise(r => setTimeout(r, 4000))]); } catch(e){}
     notifyApp(userData);
     toast("সফল! অ্যাপে ফিরে যান।", "ok");
     setTimeout(() => { try { if (window.opener) { window.opener.focus(); window.close(); } } catch(e){} }, 1200);
