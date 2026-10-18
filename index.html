@@ -242,6 +242,14 @@
     </div>
 
 <script>
+/*
+ * লগইন পেজ চলে: https://khalidurrahmanakondo-prog.github.io/My-APK-/
+ * authDomain অবশ্যই *.firebaseapp.com (Google OAuth handler এখানেই থাকে)
+ * GitHub domain শুধু Firebase Console → Authorized domains-এ থাকলেই চলে
+ */
+const GITHUB_SITE_HOST = "khalidurrahmanakondo-prog.github.io";
+const GITHUB_LOGIN_URL = "https://khalidurrahmanakondo-prog.github.io/My-APK-/";
+
 const firebaseConfig = {
     apiKey: "AIzaSyDUrso1G3orSxiZGTQ1vNYnmN0jdnJ3nSM",
     authDomain: "kr-calculator-a-bc1e2.firebaseapp.com",
@@ -734,38 +742,111 @@ document.getElementById("verifyForm").addEventListener("submit", async (e) => {
     setLoading(verifyBtn, false);
 });
 
-/* GOOGLE */
-async function handleGoogle() {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    provider.setCustomParameters({ prompt: "select_account" });
-    try {
-        const result = await auth.signInWithPopup(provider);
-        const gUser = result.user;
-        if (!gUser) { toast("Google ব্যর্থ।", "err"); return; }
-        const email = (gUser.email || "").toLowerCase();
-        const name = gUser.displayName || (email ? email.split("@")[0] : "ইউজার");
-        const photo = gUser.photoURL || null;
-        if (email && await isEmailBlocked(email)) { toast("এই ইমেইল ব্লক।", "err"); return; }
+/* GOOGLE — ফোনের সব Google ইমেইল দেখাবে (অ্যাকাউন্ট পিকার) */
+function isMobileDevice() {
+    return /Android|iPhone|iPad|iPod|Mobile|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent || "")
+        || (window.matchMedia && window.matchMedia("(max-width: 900px)").matches);
+}
 
-        let existing = email ? await findUserByEmailOrUid(email) : null;
-        if (existing && existing.user_profile?.uid) {
-            if (!(await checkPermission(existing))) { toast("অনুমতি নেই।", "err"); return; }
-            if (photo && !existing.avatar) existing.avatar = photo;
-            finishLogin(existing, "Google লগইন সফল!");
-            return;
+function makeGoogleProvider() {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    // ফোনে থাকা সব অ্যাকাউন্ট দেখানোর জন্য — সিলেক্ট স্ক্রিন বাধ্যতামূলক
+    provider.setCustomParameters({
+        prompt: "select_account",
+        access_type: "online"
+    });
+    provider.addScope("profile");
+    provider.addScope("email");
+    return provider;
+}
+
+
+async function processGoogleUser(gUser) {
+    if (!gUser) { toast("Google ব্যর্থ।", "err"); return; }
+    const email = (gUser.email || "").toLowerCase();
+    const name = gUser.displayName || (email ? email.split("@")[0] : "ইউজার");
+    const photo = gUser.photoURL || null;
+    if (email && await isEmailBlocked(email)) { toast("এই ইমেইল ব্লক।", "err"); return; }
+
+    let existing = email ? await findUserByEmailOrUid(email) : null;
+    if (existing && existing.user_profile?.uid) {
+        if (!(await checkPermission(existing))) { toast("অনুমতি নেই।", "err"); return; }
+        if (photo && !existing.avatar) existing.avatar = photo;
+        finishLogin(existing, "Google লগইন সফল!");
+        return;
+    }
+    // নতুন — জন্ম সাল লাগবে
+    pendingGoogle = { email, name, photo };
+    gSelectedYear = null;
+    document.getElementById("gYearSelectedText").textContent = "";
+    document.getElementById("btnConfirmGYear").disabled = true;
+    document.getElementById("gYearGrid").querySelectorAll(".year-btn").forEach(x => x.classList.remove("sel"));
+    goPanel("birthYear");
+}
+
+function currentAuthOriginInfo() {
+    const host = (location.hostname || "").toLowerCase();
+    const origin = (location.origin || "").toLowerCase();
+    return { host, origin, href: location.href };
+}
+
+function googleAuthErrorMessage(err) {
+    const code = err && err.code ? String(err.code) : "";
+    const { host, origin } = currentAuthOriginInfo();
+    if (code === "auth/unauthorized-domain") {
+        return "ডোমেইন অনুমোদিত নয় → " + host +
+            " | Firebase Authorized domains + Google Cloud OAuth-এ এই host যোগ করুন। origin=" + origin;
+    }
+    if (code === "auth/operation-not-allowed") return "Firebase → Authentication → Google Sign-In চালু করুন।";
+    if (code === "auth/popup-closed-by-user") return "পপআপ বন্ধ। আবার চেষ্টা করুন।";
+    if (code === "auth/popup-blocked") return "পপআপ ব্লক। ব্রাউজারে অনুমতি দিন।";
+    if (code === "auth/network-request-failed") return "নেটওয়ার্ক সমস্যা।";
+    return "Google ব্যর্থ: " + (err.message || code || "error") + " [" + host + "]";
+}
+
+async function handleGoogle() {
+    const provider = makeGoogleProvider();
+    const btns = [document.getElementById("btnGoogleLogin"), document.getElementById("btnGoogleReg")];
+    btns.forEach(b => { if (b) { b.disabled = true; b.style.opacity = "0.7"; } });
+    const info = currentAuthOriginInfo();
+    console.log("[KR Google] host=", info.host, "origin=", info.origin, "href=", info.href);
+    toast("Google অ্যাকাউন্ট বেছে নিন… (" + info.host + ")", "info");
+
+    try {
+        // মোবাইল: আগে popup (অ্যাকাউন্ট পিকার), ব্যর্থ হলে redirect
+        if (isMobileDevice()) {
+            try {
+                const result = await auth.signInWithPopup(provider);
+                await processGoogleUser(result.user);
+                return;
+            } catch (mobilePopErr) {
+                console.warn("[KR Google] mobile popup → redirect", mobilePopErr);
+                if (mobilePopErr.code === "auth/unauthorized-domain") throw mobilePopErr;
+                try { sessionStorage.setItem("kr_google_pending", "1"); } catch (e) {}
+                await auth.signInWithRedirect(provider);
+                return;
+            }
         }
-        // নতুন — জন্ম সাল লাগবে
-        pendingGoogle = { email, name, photo };
-        gSelectedYear = null;
-        document.getElementById("gYearSelectedText").textContent = "";
-        document.getElementById("btnConfirmGYear").disabled = true;
-        document.getElementById("gYearGrid").querySelectorAll(".year-btn").forEach(x => x.classList.remove("sel"));
-        goPanel("birthYear");
-    } catch(err) {
-        console.error(err);
-        if (err.code === "auth/popup-closed-by-user") toast("পপআপ বন্ধ।", "err");
-        else if (err.code === "auth/unauthorized-domain") toast("ডোমেইন Firebase Auth-এ যোগ করুন।", "err");
-        else toast("Google ব্যর্থ: " + (err.message || ""), "err");
+        try {
+            const result = await auth.signInWithPopup(provider);
+            await processGoogleUser(result.user);
+        } catch (popErr) {
+            if (popErr.code === "auth/unauthorized-domain") throw popErr;
+            if (popErr.code === "auth/popup-blocked" ||
+                popErr.code === "auth/popup-closed-by-user" ||
+                popErr.code === "auth/cancelled-popup-request" ||
+                /webview|blocked/i.test(String(popErr.message || ""))) {
+                try { sessionStorage.setItem("kr_google_pending", "1"); } catch (e) {}
+                await auth.signInWithRedirect(provider);
+                return;
+            }
+            throw popErr;
+        }
+    } catch (err) {
+        console.error("[KR Google]", err, currentAuthOriginInfo());
+        toast(googleAuthErrorMessage(err), "err");
+    } finally {
+        btns.forEach(b => { if (b) { b.disabled = false; b.style.opacity = ""; } });
     }
 }
 document.getElementById("btnGoogleLogin").addEventListener("click", handleGoogle);
@@ -800,7 +881,29 @@ document.getElementById("btnConfirmGYear").addEventListener("click", async () =>
     setLoading(btn, false);
 });
 
-document.addEventListener("DOMContentLoaded", () => {
+// Redirect থেকে ফিরে এলে Google ইউজার প্রসেস
+async function handleGoogleRedirectResult() {
+    try {
+        const result = await auth.getRedirectResult();
+        if (result && result.user) {
+            try { sessionStorage.removeItem("kr_google_pending"); } catch (e) {}
+            toast("Google অ্যাকাউন্ট সিলেক্ট হয়েছে…", "info");
+            await processGoogleUser(result.user);
+            return true;
+        }
+    } catch (err) {
+        console.error("getRedirectResult", err);
+        if (err.code === "auth/unauthorized-domain") toast("ডোমেইন Firebase Auth-এ যোগ করুন।", "err");
+        else if (err.code && err.code !== "auth/null-user") toast("Google লগইন ব্যর্থ।", "err");
+    }
+    return false;
+}
+
+document.addEventListener("DOMContentLoaded", async () => {
+    // আগে Google redirect রেজাল্ট চেক
+    const fromGoogle = await handleGoogleRedirectResult();
+    if (fromGoogle) return;
+
     const cur = PortalStorage.cur();
     if (cur && cur.user_profile?.uid) {
         document.getElementById("successTitle").textContent = "ইতিমধ্যে লগইন আছেন";
