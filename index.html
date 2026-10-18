@@ -1,266 +1,245 @@
 <!DOCTYPE html>
 <html lang="bn">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KR Downloader Pro</title>
-    <style>
-        :root { 
-            --bg: #0b0e14; --card: #1a1d21; --text: #ffffff; 
-            --grad: linear-gradient(45deg,#ff0055,#ffdd00,#00ffcc,#3366ff,#cc00ff); 
-            --nav-bg: #111;
-        } 
-        .light-mode { --bg:#f5f5f5; --card:#ffffff; --text:#000000; --nav-bg: #eee; } 
-        body { margin:0; font-family:sans-serif; background:var(--bg); color:var(--text); padding-bottom:85px; overflow-x:hidden; transition: 0.3s; } 
-        header { padding:15px; background:var(--card); text-align:center; position: sticky; top:0; z-index:1001; border-bottom:1px solid #333; } 
-        .brand-name { font-size:22px; font-weight:900; background:var(--grad); -webkit-background-clip:text; -webkit-text-fill-color:transparent; display:flex; align-items:center; justify-content:center; gap:10px; } 
-        .vidmate-download { animation: bounce 0.8s infinite; display:inline-block; -webkit-text-fill-color:initial; font-size: 26px; }
-        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
-        .page { display:none; padding:15px; } 
-        .active-page { display:block; animation: fadeIn 0.3s; } 
-        .setting-row { display:flex; align-items:center; justify-content: space-between; padding:15px; background:var(--card); border-radius:18px; margin-bottom:12px; border:1px solid rgba(128,128,128,0.2); cursor:pointer; }
-        .s-left { display: flex; align-items: center; gap: 15px; }
-        .s-icon { width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: bold; }
-        .cache-red { color: #ff0055; font-weight: 900; font-size: 13px; background: rgba(255,0,85,0.1); padding: 5px 10px; border-radius: 10px; }
-        .option-menu { display:none; background:var(--card); padding:5px; border-radius:12px; margin: -5px 0 15px; border:1px solid #444; }
-        .opt-item { padding:12px; border-bottom:1px solid rgba(128,128,128,0.1); font-size:14px; color:var(--text); display:flex; justify-content:space-between; align-items: center; }
-        .dl-card { display:flex; align-items:center; padding:12px; background:var(--card); border-radius:15px; margin-bottom:10px; border:1px solid #333; gap:10px; }
-        .dl-thumb { width:60px; height:60px; border-radius:8px; object-fit:cover; background:#000; }
-        .dl-info { flex:1; }
-        .prog-bg { width:100%; height:8px; background:#333; border-radius:10px; overflow:hidden; margin:5px 0; }
-        .prog-fill { width:0%; height:100%; background:var(--grad); transition:0.3s; }
-        .dl-stats { display:flex; justify-content:space-between; font-size:10px; color:#888; }
-        nav { position:fixed; bottom:0; width:100%; background:var(--nav-bg); display:flex; justify-content:space-around; padding:12px 0; border-top:1px solid #222; } 
-        .nav-link { color:#8b949e; text-align:center; cursor:pointer; flex:1; font-size:11px; } 
-        .nav-link.active { color:#00ffcc; font-weight:bold; } 
-        .nav-link i { display:block; font-size:22px; margin-bottom:3px; font-style:normal; }
-        input { width:100%; padding:15px; border-radius:12px; border:1px solid #444; background:var(--card); color:var(--text); margin-bottom:15px; box-sizing:border-box; outline: none; }
-        #dl-btn { width:100%; padding:15px; background:var(--grad); border:none; color:#fff; font-weight:bold; border-radius:12px; cursor:pointer; }
-        .action-btn { padding: 6px 12px; border-radius: 8px; border: none; font-size: 12px; cursor: pointer; margin-left: 5px; }
-        video { width: 100%; border-radius: 12px; margin-top: 10px; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f5f7fc">
+<title>KR Calculator A — Login</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--blue:#1769ff;--text:#17233c;--muted:#718096}
+body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:22px 16px;
+ background:radial-gradient(circle at 5% 5%,#dfeaff,transparent 36%),radial-gradient(circle at 95% 95%,#e8e8ff,transparent 36%),#f5f7fc;
+ color:var(--text);font-family:Arial,"Noto Sans Bengali",sans-serif}
+button{font:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.container{width:100%;max-width:410px}
+.card{background:#fff;border:1px solid #fff;border-radius:26px;padding:30px 23px 25px;text-align:center;box-shadow:0 18px 60px #253f7015}
+.logo{width:76px;height:76px;display:grid;place-items:center;margin:0 auto 17px;border-radius:24px;color:#fff;
+ background:linear-gradient(145deg,#3985ff,#124cce);font-size:28px;font-weight:900;letter-spacing:-2px;box-shadow:0 8px 25px #1769ff35}
+h1{font-size:24px;font-weight:800;overflow-wrap:anywhere}
+.subtitle{margin-top:10px;color:var(--muted);font-size:14px;line-height:1.9}
+.divider{height:1px;background:#edf0f6;margin:25px 0}
+.google-button{width:100%;min-height:56px;display:flex;align-items:center;justify-content:center;gap:12px;padding:13px;
+ border:1px solid #dce2ec;border-radius:15px;background:#fff;color:#253149;font-weight:700;font-size:15px}
+.google-button:active{background:#f1f5ff}
+.google-icon{width:24px;height:24px;flex-shrink:0}
+.status{display:none;padding:12px;margin-top:16px;border-radius:12px;font-size:13px;line-height:1.8;text-align:left;overflow-wrap:anywhere;white-space:pre-wrap}
+.status.show{display:block}
+.status.error{color:#a32119;background:#fff0ef}
+.status.success{color:#126b41;background:#eaf9f0}
+.status.warning{color:#8b5500;background:#fff6df}
+.privacy{margin-top:19px;color:#8994a8;font-size:12px;line-height:1.8}
+.profile{display:none;text-align:center}
+.profile.active{display:block}
+.photo{width:92px;height:92px;object-fit:cover;border-radius:50%;border:4px solid #e5edff;background:#edf2fa;margin:0 auto 15px;display:block}
+.verified{display:inline-block;margin-top:10px;padding:7px 12px;border-radius:30px;color:#147b4a;background:#e9f9f0;font-size:12px;font-weight:700}
+.code{margin-top:16px;padding:14px;border-radius:16px;background:#eef4ff;color:#124cce}
+.code small{display:block;font-size:12px;color:#5b6b88;margin-bottom:4px}
+.code b{font-size:28px;letter-spacing:5px}
+.info{margin-top:16px;padding:6px 16px;border-radius:16px;background:#f6f8fc;text-align:left}
+.row{padding:11px 0;border-bottom:1px solid #e7edf5;overflow-wrap:anywhere}
+.row:last-child{border:0}
+.label{display:block;color:#718096;font-size:12px;margin-bottom:5px}
+.value{font-size:14px;font-weight:600;line-height:1.7}
+.logout{width:100%;margin-top:18px;padding:14px;border:0;border-radius:13px;background:#fff0ef;color:#c62828;font-weight:700}
+.footer{text-align:center;padding-top:20px;color:#8a95a8;font-size:12px}
+.google-button:disabled{opacity:.85;cursor:wait}
+.loader{width:20px;height:20px;border:3px solid #cad9ff;border-top-color:#1769ff;border-radius:50%;animation:spin .6s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+[hidden]{display:none!important}
+</style>
 </head>
-<body id="app-body">
+<body>
+<main class="container">
+<section class="card">
 
-<header>
-    <div class="brand-name"><span class="vidmate-download">📥</span> KR DOWNLOADER PRO</div>
-</header>
+  <div id="loginSection">
+    <div class="logo">KR</div>
+    <h1>KR Calculator A</h1>
+    <p class="subtitle">আপনার অ্যাকাউন্টে প্রবেশ করতে<br>Google দিয়ে নিরাপদে লগইন করুন।</p>
+    <div class="divider"></div>
+    <button type="button" id="googleLogin" class="google-button">
+      <svg class="google-icon" viewBox="0 0 48 48" aria-label="Google">
+        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.74 7.18l7.72 5.99c4.51-4.17 7.06-10.31 7.06-17.64z"/>
+        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.9-5.81l-7.72-5.99c-2.14 1.45-4.89 2.3-8.18 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+        <path fill="#FBBC05" d="M10.53 28.59A14.4 14.4 0 0 1 9.75 24c0-1.59.27-3.13.76-4.59l-7.98-6.19A23.9 23.9 0 0 0 0 24c0 3.87.93 7.52 2.56 10.78l7.97-6.19z"/>
+        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+      </svg>
+      <span id="btnText">Google দিয়ে চালিয়ে যান</span>
+    </button>
+    <div id="loginStatus" class="status" role="status"></div>
+    <p class="privacy">🔒 আপনার প্রোফাইল Firebase-এ সংরক্ষিত হবে।</p>
+  </div>
 
-<div id="home" class="page active-page">
-    <h3 id="h-title">ডাউনলোড শুরু করুন</h3>
-    <input type="text" id="url-input" placeholder="লিঙ্কটি এখানে দিন...">
-    <button id="dl-btn" onclick="startDownload()">ডাউনলোড</button>
-</div>
-
-<div id="dl-manager" class="page">
-    <h3 id="dl-title">চলমান ডাউনলোড</h3>
-    <div id="active-list"></div>
-</div>
-
-<div id="videos" class="page">
-    <h3 id="v-title">ফাইল ম্যানেজার</h3>
-    <div id="video-list"></div>
-</div>
-
-<div id="settings" class="page">
-    <h3 id="s-title">সেটিংস</h3>
-    <div class="setting-row" onclick="window.open('https://facebook.com')">
-        <div class="s-left"><div class="s-icon" style="background:#1877f2">FB</div><b id="txt-fb">ফেসবুক পেজ</b></div>
+  <div id="profileSection" class="profile">
+    <img id="profilePhoto" class="photo" alt="প্রোফাইল ছবি" hidden>
+    <h1 id="profileName">ব্যবহারকারী</h1>
+    <div class="verified">✓ সফলভাবে লগইন হয়েছে</div>
+    <div class="code"><small>আপনার ৮ সংখ্যার আইডি</small><b id="userCode">--------</b></div>
+    <div class="info">
+      <div class="row"><span class="label">নাম</span><div class="value" id="userName">—</div></div>
+      <div class="row"><span class="label">ইমেইল</span><div class="value" id="userEmail">—</div></div>
     </div>
-    <div class="setting-row" onclick="toggleTheme()">
-        <div class="s-left"><div class="s-icon" style="background:var(--grad)">🌓</div><b id="txt-theme">থিম পরিবর্তন</b></div>
-    </div>
-    <div class="setting-row" onclick="toggleLang()">
-        <div class="s-left"><div class="s-icon" style="background:#ff9800">🌐</div><b><span id="lang-label">ভাষা: বাংলা</span></b></div>
-    </div>
-    <div class="setting-row" onclick="toggleMenu('net-menu')">
-        <div class="s-left"><div class="s-icon" style="background:#00ffcc">📡</div><b><span id="txt-net-label">নেটওয়ার্ক:</span> <span id="net-status">WiFi + Data</span></b></div>
-    </div>
-    <div id="net-menu" class="option-menu">
-        <div class="opt-item" onclick="setNet('WiFi Only')">WiFi Only</div>
-        <div class="opt-item" onclick="setNet('Mobile Data')">Mobile Data</div>
-        <div class="opt-item" onclick="setNet('WiFi + Data')">WiFi + Data</div>
-    </div>
-    <div class="setting-row" onclick="toggleMenu('rec-menu')">
-        <div class="s-left"><div class="s-icon" style="background:#e91e63">♻️</div><b id="txt-rec">রিকভার ফাইল</b></div>
-    </div>
-    <div id="rec-menu" class="option-menu"></div>
-    <div class="setting-row" onclick="clearCache()">
-        <div class="s-left"><div class="s-icon" style="background:#f44336">🧹</div><b id="txt-cache">ক্লিন ক্যাশে</b></div>
-        <div class="cache-red" id="c-size">৫.২৪ MB</div>
-    </div>
-</div>
+    <div id="profileStatus" class="status" role="status"></div>
+    <button id="logoutButton" type="button" class="logout">লগআউট করুন</button>
+  </div>
 
-<nav>
-    <div class="nav-link active" onclick="tab('home', this)"><i id="n1">🏠</i><span id="txt-n1">হোম</span></div>
-    <div class="nav-link" onclick="tab('dl-manager', this)"><i id="n2">📥</i><span id="txt-n2">ডাউনলোড</span></div>
-    <div class="nav-link" onclick="tab('videos', this)"><i id="n3">🎬</i><span id="txt-n3">ভিডিও</span></div>
-    <div class="nav-link" onclick="tab('settings', this)"><i id="n4">⚙️</i><span id="txt-n4">সেটিংস</span></div>
-</nav>
+</section>
+<div class="footer">© <span id="year"></span> KR Calculator A</div>
+</main>
 
-<script>
-let savedVids = JSON.parse(localStorage.getItem('kr_vids') || '[]');
-let recycleBin = JSON.parse(localStorage.getItem('kr_recycle') || '[]');
-let netConfig = localStorage.getItem('kr_net') || 'WiFi + Data';
-let currentLang = 'bn';
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut }
+  from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+import { getDatabase, ref, get, update, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/11.10.0/firebase-database.js";
 
-document.getElementById('net-status').innerText = netConfig;
+const firebaseConfig = {
+  apiKey: "AIzaSyDUrso1G3orSxiZGTQ1vNYnmN0jdnJ3nSM",
+  authDomain: "kr-calculator-a-bc1e2.firebaseapp.com",
+  databaseURL: "https://kr-calculator-a-bc1e2-default-rtdb.firebaseio.com",
+  projectId: "kr-calculator-a-bc1e2",
+  storageBucket: "kr-calculator-a-bc1e2.firebasestorage.app",
+  messagingSenderId: "916522220428",
+  appId: "1:916522220428:web:b39f14d38c9fe45ecaf4a9",
+  measurementId: "G-K4XGHWM4QF"
+};
+const HOSTED_URL = "https://kr-calculator-a-bc1e2.web.app";
 
-function tab(id, el) {
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
-    document.getElementById(id).classList.add('active-page');
-    document.querySelectorAll('.nav-link').forEach(n => n.classList.remove('active'));
-    el.classList.add('active');
+const $ = id => document.getElementById(id);
+$("year").textContent = new Date().getFullYear();
+
+function status(el, msg, type = "info") { el.textContent = msg; el.className = "status show " + type; }
+function clearStatus(el) { el.textContent = ""; el.className = "status"; }
+
+/* ৮ সংখ্যার আইডি: UID থেকে তৈরি, প্রতিবার একই থাকে */
+function code8(uid) {
+  let h = 2166136261;
+  for (const c of uid) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; }
+  return String(10000000 + (h % 90000000));
 }
 
-function toggleTheme() { document.getElementById('app-body').classList.toggle('light-mode'); }
+function showLogin() {
+  $("loginSection").hidden = false;
+  $("profileSection").classList.remove("active");
+  clearStatus($("profileStatus"));
+}
 
-function toggleLang() {
-    const l = document.getElementById('lang-label');
-    currentLang = (currentLang === 'bn') ? 'en' : 'bn';
-    if(currentLang === 'en') {
-        l.innerText = "Language: English";
-        document.getElementById('h-title').innerText = "Start Download";
-        document.getElementById('url-input').placeholder = "Paste link here...";
-        document.getElementById('dl-btn').innerText = "Download";
-        document.getElementById('dl-title').innerText = "Active Downloads";
-        document.getElementById('v-title').innerText = "File Manager";
-        document.getElementById('s-title').innerText = "Settings";
-        document.getElementById('txt-fb').innerText = "Facebook Page";
-        document.getElementById('txt-theme').innerText = "Change Theme";
-        document.getElementById('txt-net-label').innerText = "Network:";
-        document.getElementById('txt-rec').innerText = "Recover Files";
-        document.getElementById('txt-cache').innerText = "Clear Cache";
-        document.getElementById('txt-n1').innerText = "Home";
-        document.getElementById('txt-n2').innerText = "Download";
-        document.getElementById('txt-n3').innerText = "Videos";
-        document.getElementById('txt-n4').innerText = "Settings";
+function showProfile(user) {
+  $("loginSection").hidden = true;
+  $("profileSection").classList.add("active");
+  const name = user.displayName || "ব্যবহারকারী";
+  $("profileName").textContent = name;
+  $("userName").textContent = name;
+  $("userEmail").textContent = user.email || "ইমেইল পাওয়া যায়নি";
+  $("userCode").textContent = code8(user.uid);
+  const img = $("profilePhoto");
+  if (user.photoURL) {
+    img.onerror = () => { img.hidden = true; };
+    img.src = user.photoURL;
+    img.hidden = false;
+  } else img.hidden = true;
+}
+
+/* ব্যাকগ্রাউন্ডে সেভ — স্ক্রিন আটকায় না */
+async function saveProfile(user) {
+  try {
+    const userRef = ref(db, "users/" + user.uid);
+    const snap = await get(userRef);
+    const data = {
+      uid: user.uid,
+      name: user.displayName || "",
+      email: user.email || "",
+      photoURL: user.photoURL || "",
+      userCode: code8(user.uid),
+      provider: "google.com",
+      lastLoginAt: serverTimestamp()
+    };
+    if (!snap.exists()) data.createdAt = serverTimestamp();
+    await update(userRef, data);
+  } catch (e) {
+    console.error("Profile save error:", e);
+    status($("profileStatus"), "লগইন সফল, কিন্তু প্রোফাইল সেভ হয়নি। Database Rules পরীক্ষা করুন।", "warning");
+  }
+}
+
+/* ফাইল ভুল জায়গা থেকে খুললে সাথে সাথে জানাবে, আটকে থাকবে না */
+const okProtocol = location.protocol === "http:" || location.protocol === "https:";
+if (!okProtocol) {
+  status($("loginStatus"),
+    "এই ফাইলটি সরাসরি ফোন/এডিটর থেকে খুললে Google লগইন কাজ করে না।\nFirebase Hosting-এ আপলোড করে এই লিংকে খুলুন:\n" + HOSTED_URL, "warning");
+  
+} else {
+  if (/\.(web\.app|firebaseapp\.com)$/.test(location.hostname)) firebaseConfig.authDomain = location.hostname;
+  const app = initializeApp(firebaseConfig);
+  window.auth = getAuth(app);
+  window.db = getDatabase(app);
+  const auth = window.auth;
+
+  const provider = new GoogleAuthProvider();
+  provider.addScope("email");
+  provider.addScope("profile");
+  provider.setCustomParameters({ prompt: "select_account" });
+
+  let busy = false, timer = null;
+  const btn = $("googleLogin");
+  function setBusy(on) {
+    busy = on;
+    btn.disabled = on;
+    $("btnText").textContent = on ? "Google খুলছে..." : "Google দিয়ে চালিয়ে যান";
+    const sp = btn.querySelector(".loader"), ic = btn.querySelector("svg");
+    if (on) {
+      ic.hidden = true;
+      if (!sp) { const l = document.createElement("span"); l.className = "loader"; btn.prepend(l); }
     } else {
-        l.innerText = "ভাষা: বাংলা";
-        document.getElementById('h-title').innerText = "ডাউনলোড শুরু করুন";
-        document.getElementById('url-input').placeholder = "লিঙ্কটি এখানে দিন...";
-        document.getElementById('dl-btn').innerText = "ডাউনলোড";
-        document.getElementById('dl-title').innerText = "চলমান ডাউনলোড";
-        document.getElementById('v-title').innerText = "ফাইল ম্যানেজার";
-        document.getElementById('s-title').innerText = "সেটিংস";
-        document.getElementById('txt-fb').innerText = "ফেসবুক পেজ";
-        document.getElementById('txt-theme').innerText = "থিম পরিবর্তন";
-        document.getElementById('txt-net-label').innerText = "নেটওয়ার্ক:";
-        document.getElementById('txt-rec').innerText = "রিকভার ফাইল";
-        document.getElementById('txt-cache').innerText = "ক্লিন ক্যাশে";
-        document.getElementById('txt-n1').innerText = "হোম";
-        document.getElementById('txt-n2').innerText = "ডাউনলোড";
-        document.getElementById('txt-n3').innerText = "ভিডিও";
-        document.getElementById('txt-n4').innerText = "সেটিংস";
+      if (sp) sp.remove();
+      ic.hidden = false;
+      clearTimeout(timer);
     }
-    renderVids(); renderRecycle();
-}
+  }
 
-function toggleMenu(id) {
-    const m = document.getElementById(id);
-    m.style.display = m.style.display === 'block' ? 'none' : 'block';
-}
-
-function setNet(mode) {
-    netConfig = mode;
-    localStorage.setItem('kr_net', mode);
-    document.getElementById('net-status').innerText = mode;
-    toggleMenu('net-menu');
-}
-
-function clearCache() {
-    if(confirm(currentLang === 'bn' ? "ক্যাশে পরিষ্কার করবেন?" : "Clear cache?")) {
-        document.getElementById('c-size').innerText = "0.00 MB";
-    }
-}
-
-// ** মাল্টি-এপিআই ডাউনলোড লজিক **
-async function startDownload() {
-    const url = document.getElementById('url-input').value.trim();
-    if(!url) return;
-    const dlId = Date.now();
-    tab('dl-manager', document.querySelectorAll('.nav-link')[1]);
-    
-    document.getElementById('active-list').innerHTML = `
-        <div class="dl-card" id="item-${dlId}">
-            <img src="https://via.placeholder.com/60/000/fff?text=KR" class="dl-thumb">
-            <div class="dl-info">
-                <b id="st-${dlId}">${currentLang === 'bn' ? 'লিঙ্ক খোঁজা হচ্ছে...' : 'Finding Link...'}</b>
-                <div class="prog-bg"><div class="prog-fill" id="bar-${dlId}" style="width:40%"></div></div>
-            </div>
-        </div>
-    `;
-
+  btn.addEventListener("click", async () => {
+    if (busy) return;
+    clearStatus($("loginStatus"));
+    setBusy(true);
+    /* সর্বোচ্চ ১০ সেকেন্ড — এরপর বাটন আবার চালু হবে, কখনো আটকে থাকবে না */
+    timer = setTimeout(() => {
+      setBusy(false);
+      status($("loginStatus"), "Google পেজ খোলেনি। আবার চেষ্টা করুন। সমস্যা থাকলে Chrome-এ " + HOSTED_URL + " লিংকে খুলুন।", "warning");
+    }, 10000);
     try {
-        const response = await fetch(`/download?url=${encodeURIComponent(url)}`);
-        const result = await response.json();
-
-        // এপিআই ফরম্যাট হ্যান্ডলিং
-        const videoUrl = result.url || (result.data && result.data.url) || (result.downloads && result.downloads[0].url);
-
-        if (videoUrl) {
-            document.getElementById(`bar-${dlId}`).style.width = "100%";
-            document.getElementById(`st-${dlId}`).innerText = currentLang === 'bn' ? "ডাউনলোড শুরু!" : "Download Started!";
-            
-            const a = document.createElement('a');
-            a.href = videoUrl; a.download = "KR_Video_" + dlId + ".mp4"; a.click();
-
-            savedVids.unshift({ id: dlId, name: (result.title || "Video_" + dlId.toString().slice(-4)), time: new Date().toLocaleTimeString(), url: videoUrl });
-            localStorage.setItem('kr_vids', JSON.stringify(savedVids));
-            setTimeout(() => {
-                document.getElementById(`item-${dlId}`).remove();
-                renderVids();
-            }, 1000);
-        } else { throw new Error(); }
+      await signInWithPopup(auth, provider);
     } catch (e) {
-        document.getElementById(`st-${dlId}`).innerHTML = `<span style='color:red'>${currentLang === 'bn' ? 'ভিডিও পাওয়া যায়নি!' : 'Video Not Found!'}</span>`;
+      const c = e?.code || "";
+      if (c === "auth/popup-blocked" || c === "auth/operation-not-supported-in-this-environment" || c === "auth/web-storage-unsupported") {
+        try { await signInWithRedirect(auth, provider); return; } catch (e2) { e = e2; }
+      }
+      if (c !== "auth/popup-closed-by-user" && c !== "auth/cancelled-popup-request") {
+        const msgs = {
+          "auth/unauthorized-domain": "এই ডোমেইন অনুমোদিত নয়। " + HOSTED_URL + " লিংকে খুলুন অথবা Authorized domains-এ যোগ করুন।",
+          "auth/operation-not-allowed": "Firebase Console → Authentication → Sign-in method-এ Google চালু করুন।",
+          "auth/network-request-failed": "ইন্টারনেট সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।"
+        };
+        status($("loginStatus"), msgs[e.code] || ("লগইন ব্যর্থ। কোড: " + (e.code || "unknown")), "error");
+      }
+      setBusy(false);
     }
-}
+  });
 
-function renderVids() {
-    const container = document.getElementById('video-list');
-    let delBtn = currentLang === 'bn' ? 'মুছুন' : 'Delete';
-    container.innerHTML = (savedVids.length === 0) ? `<p style="text-align:center;color:#888;">No videos found</p>` : 
-    savedVids.map(v => `
-        <div class="dl-card" style="display:block">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                <b>${v.name}</b>
-                <button class="action-btn" style="background:none; color:red;" onclick="deleteToBin(${v.id})">${delBtn}</button>
-            </div>
-            <video controls src="${v.url}" style="width:100%"></video>
-        </div>
-    `).join('');
-}
+  $("logoutButton").addEventListener("click", async () => {
+    try { await signOut(auth); } catch (e) { status($("profileStatus"), "লগআউট ব্যর্থ হয়েছে।", "error"); }
+  });
 
-function deleteToBin(id) {
-    if(confirm(currentLang === 'bn' ? 'মুছে ফেলবেন?' : 'Delete?')){
-        const vid = savedVids.find(v => v.id === id);
-        recycleBin.unshift(vid);
-        savedVids = savedVids.filter(v => v.id !== id);
-        localStorage.setItem('kr_vids', JSON.stringify(savedVids));
-        localStorage.setItem('kr_recycle', JSON.stringify(recycleBin));
-        renderVids(); renderRecycle();
-    }
-}
+  onAuthStateChanged(auth, user => {
+    if (!user) { showLogin(); return; }
+    setBusy(false);
+    showProfile(user);          // সাথে সাথে দেখাবে
+    saveProfile(user);          // পেছনে সেভ হবে
+  });
 
-function renderRecycle() {
-    const menu = document.getElementById('rec-menu');
-    let restoreBtn = currentLang === 'bn' ? 'উদ্ধার' : 'Restore';
-    menu.innerHTML = (recycleBin.length === 0) ? `<div class="opt-item">Empty</div>` : 
-    recycleBin.map(v => `<div class="opt-item"><span>${v.name}</span><button class="action-btn" style="background:#00ffcc; color:black;" onclick="restoreVid(${v.id})">${restoreBtn}</button></div>`).join('');
+  getRedirectResult(auth).catch(() => {});
 }
-
-function restoreVid(id) {
-    const vid = recycleBin.find(v => v.id === id);
-    savedVids.unshift(vid);
-    recycleBin = recycleBin.filter(v => v.id !== id);
-    localStorage.setItem('kr_vids', JSON.stringify(savedVids));
-    localStorage.setItem('kr_recycle', JSON.stringify(recycleBin));
-    renderVids(); renderRecycle();
-}
-
-renderVids(); renderRecycle();
 </script>
 </body>
 </html>
