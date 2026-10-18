@@ -126,7 +126,7 @@ button:disabled{opacity:.8;cursor:wait}
   </div>
 
 </section>
-<div class="footer">© <span id="year"></span> KR Calculator A<br><span style="font-size:11px">ডোমেইন: <b id="domainShow"></b> · সংস্করণ v8</span></div>
+<div class="footer">© <span id="year"></span> KR Calculator A<br><span style="font-size:11px">ডোমেইন: <b id="domainShow"></b> · সংস্করণ v9</span></div>
 </main>
 
 <script>
@@ -312,7 +312,10 @@ if (!okProtocol) {
     "auth/invalid-verification-code": "কোড ভুল। আবার দিন।",
     "auth/code-expired": "কোডের সময় শেষ। নতুন কোড পাঠান।",
     "auth/too-many-requests": "অনেকবার চেষ্টা হয়েছে। কিছুক্ষণ পরে চেষ্টা করুন।",
-    "auth/operation-not-allowed": "Firebase Console → Authentication → Sign-in method-এ এই পদ্ধতি চালু করুন।",
+    "auth/operation-not-allowed": "SMS পাঠানো যায়নি। Firebase Console → Authentication → Settings → SMS region policy-তে বাংলাদেশ (+880) অনুমোদন করুন। তারপরও না হলে Sign-in method-এ Phone ও Email/Password চালু আছে কিনা দেখুন।",
+    "auth/quota-exceeded": "আজকের SMS-এর সীমা (১০টি) শেষ। বিলিং প্ল্যান যোগ করুন অথবা Firebase-এর টেস্ট ফোন নম্বর ব্যবহার করুন।",
+    "auth/captcha-check-failed": "reCAPTCHA যাচাই ব্যর্থ। পেজ রিফ্রেশ করে আবার চেষ্টা করুন।",
+    "auth/invalid-app-credential": "reCAPTCHA বা অ্যাপ যাচাই ব্যর্থ। পেজ রিফ্রেশ করে আবার চেষ্টা করুন।",
     "auth/billing-not-enabled": "ফোন কোডের জন্য Firebase প্রজেক্টে বিলিং প্ল্যান (Blaze) লাগবে।",
     "auth/network-request-failed": "ইন্টারনেট সংযোগ পরীক্ষা করুন।",
     "auth/credential-already-in-use": "এই ফোন নম্বর আগেই অন্য অ্যাকাউন্টে ব্যবহৃত হয়েছে।",
