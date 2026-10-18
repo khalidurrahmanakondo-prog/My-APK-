@@ -98,7 +98,7 @@ button:disabled{opacity:.8;cursor:wait}
         <input id="codeIn" type="text" inputmode="numeric" maxlength="6" placeholder="৬ সংখ্যার কোড">
         <button type="button" id="verifyCode" class="primary">যাচাই করুন</button>
       </div>
-      <div id="recaptcha"></div>
+      <div id="recaptchaHolder"></div>
     </div>
     <div id="loginStatus" class="status" role="status"></div>
     <p class="privacy">🔒 আপনার প্রোফাইল Firebase-এ সংরক্ষিত হবে।</p>
@@ -122,7 +122,7 @@ button:disabled{opacity:.8;cursor:wait}
   </div>
 
 </section>
-<div class="footer">© <span id="year"></span> KR Calculator A<br><span style="font-size:11px">ডোমেইন: <b id="domainShow"></b> · সংস্করণ v6</span></div>
+<div class="footer">© <span id="year"></span> KR Calculator A<br><span style="font-size:11px">ডোমেইন: <b id="domainShow"></b> · সংস্করণ v7</span></div>
 </main>
 
 <script>
@@ -375,13 +375,16 @@ if (!okProtocol) {
     if (/^01\d{9}$/.test(n)) n = "+88" + n;
     if (!/^\+\d{10,15}$/.test(n)) throw { code: "auth/invalid-phone-number" };
     try {
-      if (!recaptcha) recaptcha = new RecaptchaVerifier(auth, "recaptcha", { size: "invisible" });
+      try { recaptcha?.clear(); } catch (_) {}
+      $("recaptchaHolder").innerHTML = '<div id="recaptchaEl"></div>';
+      recaptcha = new RecaptchaVerifier(auth, "recaptchaEl", { size: "invisible" });
       confirmation = await signInWithPhoneNumber(auth, n, recaptcha);
       $("codeBox").hidden = false;
       status($("loginStatus"), "SMS-এ কোড পাঠানো হয়েছে। নিচে কোডটি দিন।", "success");
     } catch (e) {
       try { recaptcha?.clear(); } catch (_) {}
       recaptcha = null;
+      $("recaptchaHolder").innerHTML = "";
       throw e;
     }
   }));
