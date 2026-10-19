@@ -388,12 +388,17 @@ function maskEmail(email) {
     return n.length <= 3 ? n[0]+"***@"+d : n.slice(0,4)+"***"+n.slice(-2)+"@"+d;
 }
 async function returnToApp() {
-    // আগে সেশন লিখে তারপর অ্যাপে ফিরো — অ্যাপ Firebase থেকে অটো সিঙ্ক করবে
-    try { await Promise.race([writeLoginSession(PortalStorage.cur()), new Promise(r => setTimeout(r, 5000))]); } catch(e){}
-    try { notifyApp(PortalStorage.cur()); } catch(e){}
+    const cur = PortalStorage.cur();
+    // সেশন দ্রুত লেখো (সর্বোচ্চ ১.২ সেকেন্ড অপেক্ষা)
+    try { await Promise.race([writeLoginSession(cur), new Promise(r => setTimeout(r, 1200))]); } catch(e){}
+    try { notifyApp(cur); } catch(e){}
     try { if (window.opener) { window.opener.focus(); window.close(); return; } } catch(e){}
+    // WebView: আগের ক্যালকুলেটর পেজে ফিরে যাও
+    try {
+        if (history.length > 1) { history.back(); return; }
+    } catch(e){}
     try { window.close(); } catch(e){}
-    try { if (history.length > 1) history.back(); else toast("অ্যাপ খুলুন — লগইন সেভ হয়েছে, প্রোফাইল অটো আসবে।","info"); } catch(e){ toast("অ্যাপ খুলুন — লগইন সেভ হয়েছে।","info"); }
+    toast("অ্যাপে ফিরে যান — লগইন সেভ হয়েছে।", "info");
 }
 document.getElementById("btnReturnApp").addEventListener("click", returnToApp);
 document.getElementById("btnSwitchAcc").addEventListener("click", () => { PortalStorage.setCur(null); goPanel("login"); });
@@ -650,33 +655,23 @@ async function saveNewUserToFirebase(userData) {
     const uid = userData.user_profile.uid;
     const ver = APP_VERSION;
     const email = String(userData.user_profile.email || "").toLowerCase().trim();
-    if (email) {
-        const existingUid = await getUidByEmail(email);
-        if (existingUid && existingUid !== uid) {
-            throw new Error("এই ইমেইলে ইতিমধ্যে অন্য অ্যাকাউন্ট আছে");
-        }
-    }
     const uref = db.collection(FIREBASE_COLLECTION_NAME).doc(uid);
     const ts = firebase.firestore.FieldValue.serverTimestamp();
-    await uref.set({
-        uid, app: FIREBASE_COLLECTION_NAME, version: ver,
-        avatar: userData.avatar || null, isCircle: userData.isCircle ?? false, updatedAt: ts
-    }, { merge: true });
     const prof = { ...userData.user_profile, uid, version: ver, app_permission: true };
     if (email) prof.email = email;
-    await uref.collection("Profile").doc("user_Profile").set(prof, { merge: true });
-    await uref.collection("Credit").doc("app_Credit").set({
-        user_credit: userData.user_credit != null ? userData.user_credit : INITIAL_NEW_USER_CREDITS,
-        uid, version: ver, updatedAt: ts
-    }, { merge: true });
-    await uref.collection("Credit").doc("app_Debt").set({
-        debt_credit: 0, max_debt: MAX_DEBT_CREDIT, uid, version: ver, updatedAt: ts
-    }, { merge: true });
-    await uref.collection("Permission").doc("app_Permission").set({
-        allowed: true, uid, email: email || "",
-        version: ver, updatedAt: ts
-    }, { merge: true });
-    if (email) await bindEmailToUid(email, uid, { name: userData.user_profile.name || "" });
+    const credit = userData.user_credit != null ? userData.user_credit : INITIAL_NEW_USER_CREDITS;
+    // একসাথে লেখো — দ্রুত
+    const jobs = [
+        uref.set({ uid, app: FIREBASE_COLLECTION_NAME, version: ver, avatar: userData.avatar || null, isCircle: userData.isCircle ?? true, updatedAt: ts }, { merge: true }),
+        uref.collection("Profile").doc("user_Profile").set(prof, { merge: true }),
+        uref.collection("Permission").doc("app_Permission").set({ allowed: true, uid, email: email || "", version: ver, updatedAt: ts }, { merge: true })
+    ];
+    if (email) jobs.push(bindEmailToUid(email, uid, { name: userData.user_profile.name || "" }));
+    // RTDB ক্রেডিট একসাথে
+    if (typeof rtdb !== "undefined" && rtdb) {
+        jobs.push(rtdb.ref(FIREBASE_COLLECTION_NAME + "/" + uid + "/app_Credit").set({ user_credit: credit, uid: uid, createdAt: Date.now() }));
+    }
+    await Promise.all(jobs);
 }
 
 /*
@@ -756,17 +751,16 @@ async function finishLogin(userData, title) {
     const nameShow = userData.user_profile.name || "";
     const emailShow = userData.user_profile.email || "";
     document.getElementById("successTitle").textContent = title || "লগইন সফল!";
-    document.getElementById("successMsg").textContent =
-        (nameShow ? ("নাম: " + nameShow + "\n") : "") +
-        (emailShow ? ("ইমেইল: " + emailShow + "\n") : "") +
-        "UID: " + uidShow + "\n\nনিচের বাটনে চাপুন → অ্যাপে ফিরে যান।\nঅ্যাপ নিজেই নাম, ইমেইল, ছবি ও ক্রেডিট সিঙ্ক করবে।";
+    document.getElementById("successMsg").innerHTML =
+        (nameShow ? ("নাম: <b>" + nameShow + "</b><br>") : "") +
+        (emailShow ? ("ইমেইল: <b>" + emailShow + "</b><br>") : "") +
+        "UID: <b style=\"color:#4ade80\">" + uidShow + "</b><br><br>অ্যাপে ফিরে যাচ্ছে…";
     goPanel("success");
-    try {
-        await Promise.race([ensureUserCollections(userData), new Promise(r => setTimeout(r, 6000))]);
-    } catch(e){}
-    try { await Promise.race([writeLoginSession(userData), new Promise(r => setTimeout(r, 5000))]); } catch(e){}
-    notifyApp(userData);
-    toast("সফল! অ্যাপে ফিরে যান — প্রোফাইল অটো আসবে।", "ok");
+    try { await Promise.race([writeLoginSession(userData), new Promise(r => setTimeout(r, 800))]); } catch(e){}
+    try { notifyApp(userData); } catch(e){}
+    toast("সফল! অ্যাপে ফিরে যাচ্ছে…", "ok");
+    setTimeout(function() { try { returnToApp(); } catch(e){} }, 400);
+    try { ensureUserCollections(userData); } catch(e){}
 }
 
 let pending = null, realVerifyCode = "", realTokenId = "", codeExpireTime = 0, verifyMode = "reg";
