@@ -312,18 +312,40 @@ async function findByUid(uid) {
 async function findByEmail(email) {
   email = String(email || "").toLowerCase().trim();
   if (!email) return null;
+  // ১) ইমেইল→UID ম্যাপ ডক (সবচেয়ে নির্ভরযোগ্য — এক ইমেইল = এক UID)
   try {
-    const snap = await db.collection(COL).where("email", "==", email).limit(5).get();
+    const mapSnap = await userRef("_email_" + emailKey(email)).get();
+    if (mapSnap.exists) {
+      const m = mapSnap.data() || {};
+      const uid = m.uid || null;
+      if (uid) {
+        const u = await findByUid(uid);
+        if (u) return u;
+        // ম্যাপ আছে কিন্তু ইউজার ডক নেই — ম্যাপের ডেটা দিয়ে
+        return packFromDoc(uid, { uid, email, name: m.name || "", birth_year: m.birth_year || "", joined: m.joined || "" });
+      }
+    }
+  } catch (e) {}
+  // ২) কালেকশনে email ফিল্ড কোয়েরি
+  try {
+    const snap = await db.collection(COL).where("email", "==", email).limit(10).get();
+    let best = null;
     for (const d of snap.docs) {
       const id = d.id;
-      if (id.startsWith("_blocked_")) continue;
+      if (id.startsWith("_")) continue; // _session_ / _blocked_ / _email_ বাদ
       const data = d.data() || {};
       if (data.blocked === true) continue;
       if (!data.uid) data.uid = id;
-      return packFromDoc(data.uid || id, data);
+      best = packFromDoc(data.uid || id, data);
+      break;
+    }
+    if (best) {
+      // ম্যাপ আপডেট রাখো
+      bindEmailMap(email, best.user_profile.uid, best.user_profile.name || "");
+      return best;
     }
   } catch (e) {}
-  // লেগাসি collectionGroup
+  // ৩) লেগাসি Profile সাবকালেকশন
   try {
     const snap = await db.collectionGroup("Profile").where("email", "==", email).limit(5).get();
     for (const d of snap.docs) {
@@ -334,11 +356,21 @@ async function findByEmail(email) {
       if (!uid && ui >= 0) uid = parts[ui + 1];
       if (!uid && parts[2] === "Profile") uid = parts[1];
       if (!uid) continue;
-      return findByUid(uid);
+      bindEmailMap(email, uid, p.name || "");
+      const u = await findByUid(uid);
+      if (u) return u;
     }
   } catch (e) {}
   return null;
 }
+function bindEmailMap(email, uid, name) {
+  email = String(email || "").toLowerCase().trim();
+  if (!email || !uid) return;
+  userRef("_email_" + emailKey(email)).set({
+    email, uid, name: name || "", at: TS()
+  }, { merge: true }).catch(() => {});
+}
+
 
 async function newUid() {
   for (let i = 0; i < 5; i++) {
@@ -372,6 +404,8 @@ async function saveNewUser(u) {
     createdAt: t
   };
   await userRef(uid).set(doc, { merge: true });
+  // এক ইমেইল = এক UID ম্যাপ
+  if (doc.email) bindEmailMap(doc.email, uid, doc.name || "");
   // ক্রেডিট Firestore-এ লেখা হয় না — অ্যাপ RTDB-তে নিজে তৈরি করবে
 }
 
@@ -384,27 +418,30 @@ function ensureFlat(u) {
 function writeSession(u) {
   const p = u.user_profile, uid = String(p.uid), now = Date.now();
   const pay = {
-    uid, ver: VER, name: p.name || "", email: String(p.email || "").toLowerCase(),
-    avatar: u.avatar || "", credit: 0, birth_year: p.birth_year || "", birth_date: p.birth_date || "",
-    joined: p.joined || "", at: now, expiresAt: now + 15 * 60 * 1000, app: COL
+    uid: uid,
+    ver: VER,
+    name: p.name || "",
+    email: String(p.email || "").toLowerCase(),
+    avatar: u.avatar || "",
+    credit: 0,
+    birth_year: p.birth_year || "",
+    birth_date: p.birth_date || "",
+    joined: p.joined || "",
+    at: now,
+    expiresAt: now + 30 * 60 * 1000,
+    app: COL
   };
-  const fs = Object.assign({}, pay, { at: TS() });
-  let done; const first = new Promise(r => done = r); let ok = false;
   const jobs = [];
-  const win = pr => pr.then(() => { ok = true; done(true); }).catch(() => {});
-  // Firestore: UID তালিকা নষ্ট না করতে _session_ প্রিফিক্স
-  try {
-    if (SID) jobs.push(win(db.collection(COL).doc("_session_" + SID).set(fs, { merge: true })));
-    jobs.push(win(db.collection(COL).doc("_session_last").set(fs, { merge: true })));
-  } catch (e) {}
-  // RTDB
-  if (rtdb) {
-    if (SID) jobs.push(win(rtdb.ref(COL + "/LoginSessions/" + SID).set(pay)));
-    jobs.push(win(rtdb.ref(COL + "/LoginSessions/last").set(pay)));
+  // একই কালেকশন: KR pro math master / _session_last
+  jobs.push(db.collection(COL).doc("_session_last").set(Object.assign({}, pay, { at: TS() }), { merge: true }));
+  if (SID) {
+    jobs.push(db.collection(COL).doc("_session_" + SID).set(Object.assign({}, pay, { at: TS() }), { merge: true }));
   }
-  if (!jobs.length) { done(false); return first; }
-  Promise.all(jobs).then(() => done(ok)).catch(() => done(ok));
-  return first;
+  if (rtdb) {
+    jobs.push(rtdb.ref(COL + "/LoginSessions/last").set(pay));
+    if (SID) jobs.push(rtdb.ref(COL + "/LoginSessions/" + SID).set(pay));
+  }
+  return Promise.all(jobs.map(j => Promise.resolve(j).catch(e => { console.error(e); return null; })));
 }
 function notifyApp(u) {
   const m = { type: "KR_LOGIN", uid: u.user_profile.uid, ver: u.version };
@@ -450,7 +487,7 @@ async function finish(u, title) {
   go("success");
   // সেশন দ্রুত লেখো — বেশি অপেক্ষা নয়
   sessP = writeSession(u);
-  await Promise.race([sessP, new Promise(r => setTimeout(r, 600))]);
+  await Promise.race([sessP, new Promise(r => setTimeout(r, 3000))]);
   try {
     const pay2 = { uid: c.uid, ver: VER, name: c.name || "", email: String(c.email || "").toLowerCase(),
       avatar: u.avatar || "", credit: 0, birth_year: c.birth_year || "", birth_date: c.birth_date || "",
@@ -463,6 +500,7 @@ async function finish(u, title) {
       if (SID) rtdb.ref(COL + "/LoginSessions/" + SID).set(pay2).catch(()=>{});
     }
   } catch (e) {}
+  if (c.email) bindEmailMap(c.email, c.uid, c.name || "");
   notifyApp(u);
   returnToApp();
 }
@@ -551,12 +589,32 @@ $("btnConfirm").onclick = async () => {
       }, extra), { merge: true });
       await finish(ex, "Google লগইন সফল!");
     } else {
-      const uid = await (pendCopy.uidP || newUid());
-      const u = { app: COL, version: VER, foundVersion: "flat",
-        user_profile: Object.assign({ name, email, uid, version: VER, app_permission: true, google: true }, extra),
-        user_credit: CREDIT0, debt_credit: 0, avatar: photo, isCircle: true };
-      await saveNewUser(u);
-      await finish(u, "অ্যাকাউন্ট তৈরি হয়েছে!");
+      // নতুন তৈরির আগে আবার ইমেইল চেক — থাকলে পুরনো UID
+      let again = null;
+      try { again = await findByEmail(email); } catch (e) {}
+      if (again && again.user_profile && again.user_profile.uid) {
+        const ex = again;
+        if (!ex.user_profile.joined) ex.user_profile.joined = joinedNow;
+        Object.assign(ex.user_profile, extra);
+        if (photo) ex.avatar = photo;
+        if (name) ex.user_profile.name = name;
+        ex.user_profile.email = email;
+        await userRef(ex.user_profile.uid).set(Object.assign({
+          uid: ex.user_profile.uid, name: name, email: email,
+          version: VER, app: COL, app_permission: true, google: true,
+          avatar: photo || ex.avatar || null, updatedAt: TS()
+        }, extra), { merge: true });
+        bindEmailMap(email, ex.user_profile.uid, name);
+        await finish(ex, "Google লগইন সফল!");
+      } else {
+        const uid = await (pendCopy.uidP || newUid());
+        const u = { app: COL, version: VER, foundVersion: "flat",
+          user_profile: Object.assign({ name, email, uid, version: VER, app_permission: true, google: true }, extra),
+          user_credit: CREDIT0, debt_credit: 0, avatar: photo, isCircle: true };
+        await saveNewUser(u);
+        bindEmailMap(email, uid, name);
+        await finish(u, "অ্যাকাউন্ট তৈরি হয়েছে!");
+      }
     }
   } catch (e) {
     console.error(e);
@@ -570,23 +628,40 @@ $("btnConfirm").onclick = async () => {
 /* ---------- Google ---------- */
 async function processGoogle(gu) {
   if (!gu) { toast("Google ব্যর্থ।", "err"); return; }
-  const email = (gu.email || "").toLowerCase(), name = gu.displayName || email.split("@")[0] || "ইউজার", photo = gu.photoURL || null;
-  const [blocked, existing] = await Promise.all([email ? isBlocked(email) : false, email ? findByEmail(email) : null]);
+  const email = (gu.email || "").toLowerCase().trim();
+  const name = gu.displayName || (email ? email.split("@")[0] : "") || "ইউজার";
+  const photo = gu.photoURL || null;
+  if (!email) { toast("ইমেইল পাওয়া যায়নি।", "err"); return; }
+  // ব্লক + একই ইমেইলের পুরনো অ্যাকাউন্ট (বাধ্যতামূলক চেক)
+  const blocked = await isBlocked(email);
   if (blocked) { toast("এই ইমেইল ব্লক।", "err"); return; }
+  let existing = await findByEmail(email);
+  // আবার একবার চেক — রেস এড়াতে
+  if (!existing) {
+    try { existing = await findByEmail(email); } catch (e) {}
+  }
   if (existing && existing.user_profile && existing.user_profile.uid) {
+    // একই ইমেইল → একই UID — নতুন UID বানাবে না
     if (existing.app_permission === false) { toast("অ্যাপ ব্যবহারের অনুমতি নেই।", "err"); return; }
-    if (photo) existing.avatar = photo; // Google লোগো সবসময়
-    if (!existing.user_profile.email) existing.user_profile.email = email;
-    // নাম/ইমেইল/ছবি আপডেট
+    if (photo) existing.avatar = photo;
     if (name) existing.user_profile.name = name;
-    if (email) existing.user_profile.email = email;
+    existing.user_profile.email = email;
+    bindEmailMap(email, existing.user_profile.uid, name);
+    // প্রোফাইল মার্জ (UID অপরিবর্তিত)
+    userRef(existing.user_profile.uid).set({
+      uid: existing.user_profile.uid,
+      email: email,
+      name: name,
+      avatar: photo || existing.avatar || null,
+      updatedAt: TS()
+    }, { merge: true }).catch(() => {});
     if (existing.user_profile.birth_year) {
-      // জন্মসাল আছে → সাথে সাথে অ্যাপে ফেরত (লগইন লুপ নয়)
       finish(existing, "Google লগইন সফল!");
       return;
     }
-    pend = { email, name, photo, existing }; // জন্মসাল নেই → একবারই জিজ্ঞাসা
+    pend = { email, name, photo, existing }; // পুরনো UID রাখো
   } else {
+    // সত্যি নতুন ইমেইল — তখনই নতুন UID
     pend = { email, name, photo, existing: null, uidP: newUid() };
   }
   resetBirth();
