@@ -1,17 +1,16 @@
 <!DOCTYPE html>
 <html lang="bn">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
-    <title>KR Calculator A — Login</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
-    <style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+<title>KR Calculator A — Login</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<style>
         :root {
             --green: #22c55e; --green-dark: #15803d; --red: #ef4444;
             --text: #f1f5f9; --muted: #cbd5e1;
@@ -39,36 +38,21 @@
         .panel.on { display:block; }
         .ib { margin-bottom:13px; width:100%; }
         .ib label { display:block; font-size:13px; font-weight:600; color:#f1f5f9; margin-bottom:5px; text-shadow:0 1px 3px rgba(0,0,0,0.8); }
-        .iw { position:relative; width:100%; }
-        .iw > i:first-child { position:absolute; left:14px; top:50%; transform:translateY(-50%); color:var(--green); font-size:14px; z-index:2; }
-        .iw .eye-btn { position:absolute; right:12px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--muted); cursor:pointer; font-size:14px; z-index:2; padding:4px; }
-        .ib input, .ib select {
-            width:100%; padding:12px 12px 12px 42px; background:var(--input-bg);
+        .ib input {
+            width:100%; padding:12px; background:var(--input-bg);
             border:1px solid var(--border); border-radius:11px; color:#fff; font-size:16px;
             outline:none; transition:0.2s; -webkit-appearance:none; appearance:none;
         }
-        .ib select { cursor:pointer; }
-        .ib select option { background:#0f1a12; color:#fff; }
         .ib input::placeholder { color:#94a3b8; }
-        .ib input:focus, .ib select:focus { border-color:var(--green); box-shadow:0 0 0 3px rgba(34,197,94,0.3); background:rgba(5,12,8,0.75); }
-        .ib input.has-eye { padding-right:42px; }
-        .uid-row { display:flex; gap:8px; width:100%; }
-        .uid-row input { padding-left:12px; }
-        .gbtn { background:linear-gradient(135deg,var(--green-dark),var(--green)); color:#fff; border:none; padding:0 12px; border-radius:11px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; }
+        .ib input:focus { border-color:var(--green); box-shadow:0 0 0 3px rgba(34,197,94,0.3); background:rgba(5,12,8,0.75); }
+        .ib input:disabled { opacity:.35; }
         .help { font-size:11px; color:var(--muted); margin-top:4px; display:block; }
-        .err { font-size:12px; color:var(--red); margin-top:4px; display:none; font-weight:600; }
-        .btn { width:100%; padding:13px; background:linear-gradient(135deg,var(--green-dark),var(--green)); color:#fff; border:none; border-radius:11px; font-size:14.5px; font-weight:700; cursor:pointer; box-shadow:0 8px 18px -5px rgba(34,197,94,0.4); margin-top:4px; display:flex; align-items:center; justify-content:center; gap:8px; transition:0.15s; }
-        .btn:active { transform:scale(0.97); opacity:0.9; }
+        .btn { width:100%; padding:13px; background:linear-gradient(135deg,var(--green-dark),var(--green)); color:#fff; border:none; border-radius:11px; font-size:14.5px; font-weight:700; cursor:pointer; box-shadow:0 8px 18px -5px rgba(34,197,94,0.4); margin-top:4px; display:flex; align-items:center; justify-content:center; gap:8px; transition:0.15s; font-family:inherit; }
+        .btn:active { transform:none !important; opacity:0.9; }
         .btn:disabled { opacity:0.65; cursor:not-allowed; }
         .btn.sec { background:rgba(0,0,0,0.4); border:1.5px solid var(--border); color:#fff; box-shadow:none; margin-top:8px; }
         .btn.google { background:#fff; color:#1f2937; box-shadow:0 4px 12px rgba(0,0,0,0.2); border:1px solid rgba(0,0,0,0.08); }
         .btn.google img { width:18px; height:18px; }
-        .divider { display:flex; align-items:center; gap:12px; margin:14px 0; color:var(--muted); font-size:12px; }
-        .divider::before, .divider::after { content:''; flex:1; height:1px; background:var(--border); }
-        .foot { text-align:center; margin-top:14px; padding-top:12px; border-top:1px solid var(--border); width:100%; }
-        .foot p { font-size:13px; color:var(--muted); }
-        .foot a { color:var(--green); text-decoration:none; font-weight:700; cursor:pointer; }
-        .token-box { font-size:24px; font-weight:800; color:var(--green); letter-spacing:3px; margin:12px 0; background:rgba(0,0,0,0.3); padding:12px; border-radius:10px; border:1px dashed var(--green); word-break:break-all; text-align:center; }
         .toast-wrap { position:fixed; top:16px; right:12px; z-index:9999; display:flex; flex-direction:column; gap:8px; max-width:min(300px,calc(100vw - 24px)); pointer-events:none; }
         .toast { pointer-events:auto; background:rgba(39,205,120,0.95); color:#fff; border-radius:10px; padding:10px 12px; font-size:13px; font-weight:600; box-shadow:0 4px 14px rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.2); opacity:1; }
         .toast.err { background:rgba(255,75,75,0.95); }
@@ -82,197 +66,97 @@
             display:grid; grid-template-columns:repeat(4,1fr); gap:8px; max-height:220px;
             overflow-y:auto; overflow-x:hidden; padding:8px 0;
             overscroll-behavior:contain; -webkit-overflow-scrolling:touch;
-            scrollbar-width:none; -ms-overflow-style:none;
-            touch-action:pan-y;
+            scrollbar-width:none; -ms-overflow-style:none; touch-action:pan-y;
         }
         .year-grid::-webkit-scrollbar { display:none; width:0; height:0; }
+        .year-grid.locked { opacity:.35; pointer-events:none; }
         .year-btn {
             padding:10px 4px; border-radius:10px; border:1px solid var(--border);
             background:rgba(5,12,8,0.55); color:#fff; font-weight:700; font-size:14px; cursor:pointer;
-            transform:none !important; transition:none !important;
-            -webkit-tap-highlight-color:transparent;
+            transform:none !important; transition:none !important; font-family:inherit;
         }
         .year-btn.sel { background:linear-gradient(135deg,var(--green-dark),var(--green)); border-color:var(--green); }
-        .year-btn:active { transform:none !important; opacity:0.9; }
-        .btn:active { transform:none !important; opacity:0.9; }
         * { scroll-behavior:auto !important; }
         .selected-year { text-align:center; color:var(--green); font-weight:700; margin-top:6px; font-size:14px; }
     </style>
 </head>
 <body>
-    <div class="toast-wrap" id="toastWrap"></div>
+    <div class="toast-wrap" id="toasts"></div>
     <div class="wrap">
         <a class="back-app" href="#" onclick="returnToApp(); return false;">⬅️ অ্যাপে ফিরে যান</a>
         <!-- স্থায়ী অ্যাপ লোগো/নাম নেই — অ্যাপ থেকে শেয়ার করলে দেখাবে -->
         <div class="brand">
             <div class="logo-box" id="sharedLogoBox" style="display:none;">
-                <img id="sharedAppLogo" src="" alt="App" width="80" height="80">
+                <img id="appLogo" src="" alt="App" width="80" height="80">
             </div>
-            <h1 class="btitle" id="sharedAppName" style="display:none;"></h1>
+            <h1 class="btitle" id="appName" style="display:none;"></h1>
             <h2 class="bsub" id="heading">লগইন / সাইন ইন</h2>
             <p class="bdesc" id="desc">শুধু Google অ্যাকাউন্ট দিয়ে নিরাপদ লগইন।</p>
         </div>
 
         <div class="card">
-<!-- LOGIN — শুধু Google -->
+            <!-- LOGIN — শুধু Google -->
             <div id="login" class="panel on">
                 <div style="text-align:center;margin-bottom:18px;padding:4px 2px;">
                     <p style="font-size:15px;font-weight:700;color:#fff;line-height:1.55;margin-bottom:10px;">🌟 আপনার দুর্দান্ত ডিজিটাল যাত্রা শুরু হোক এখনই! 🚀</p>
                     <p style="font-size:13px;color:var(--muted);line-height:1.7;text-align:left;">
-                        🔒 আপনার সর্বোচ্চ নিরাপত্তা ও নির্বিঘ্ন অভিজ্ঞতা নিশ্চিত করতে আমরা ব্যবহার করছি বিশ্বের সবচেয়ে সেরা <b style="color:#4ade80;">Google সিকিউরিটি সিস্টেম</b>। 🔑 কোনো জটিল পাসওয়ার্ড মনে রাখার ঝামেলা ছাড়াই মাত্র ১-ক্লিকে আমাদের সাথে যুক্ত হোন! ✨<br><br>
+                        🔒 আপনার সর্বোচ্চ নিরাপত্তা ও নির্বিঘ্ন অভিজ্ঞতা নিশ্চিত করতে আমরা ব্যবহার করছি বিশ্বের সবচেয়ে সেরা <b style="color:#4ade80;">Google সিকিউরিটি সিস্টেম</b>। 🔑 কোনো জটিল পাসওয়ার্ড মনে রাখার ঝামেলা ছাড়াই মাত্র ১-ক্লিকে আমাদের সাথে যুক্ত হোন! ✨<br><br>
 
                         <b style="color:#38bdf8;">🎁 লগইন করার অসাধারণ সব সুবিধাসমূহ:</b><br>
                         • ☁️ <b>স্বয়ংক্রিয় ক্লাউড ব্যাকআপ:</b> আপনার কাজের সকল প্রোগ্রেস ও ডেটা থাকবে আজীবন নিরাপদ।<br>
                         • 📲 <b>মাল্টি-ডিভাইস এক্সেস:</b> ফোন, ট্যাব বা ল্যাপটপ—যেকোনো ডিভাইস থেকে নিজের প্রোফাইলে ঢুকুন।<br>
                         • ⚡ <b>সুপারফাস্ট সাইন-ইন:</b> কোনো ফর্ম পূরণ না করেই মাত্র এক ক্লিকে নিমেষেই অ্যাপে প্রবেশ।<br>
-                        • 👑 <b>এক্সক্লুসিভ ফিচার ও অফার:</b> আমাদের মেম্বার হয়ে বিশেষ সব আপডেট ও প্রিমিয়াম সুবিধা উপভোগ করুন।<br><br>
+                        • 👑 <b>এক্সক্লুসিভ ফিচার ও অফার:</b> আমাদের মেম্বার হয়ে বিশেষ সব আপডেট ও প্রিমিয়াম সুবিধা উপভোগ করুন।<br><br>
 
-                        <b style="color:#f87171;">⚠️ সাইন-ইন না করলে যেসব বড় ক্ষতি বা অসুবিধা হবে:</b><br>
+                        <b style="color:#f87171;">⚠️ সাইন-ইন না করলে যেসব বড় ক্ষতি বা অসুবিধা হবে:</b><br>
                         • 🚫 <b>সীমিত ব্যবহার:</b> অনেক জরুরি ও দরকারি ফিচার ব্যবহারে বাধা তৈরি হবে।<br>
-                        • ❓ <b>কোনো প্রোফাইল আইডেন্টিটি থাকবে না:</b> আপনার ইউনিক আইডি না থাকায় যেকোনো সমস্যায় সাপোর্ট পাওয়া কঠিন হবে।
+                        • ❓ <b>কোনো প্রোফাইল আইডেন্টিটি থাকবে না:</b> আপনার ইউনিক আইডি না থাকায় যেকোনো সমস্যায় সাপোর্ট পাওয়া কঠিন হবে।
                     </p>
                 </div>
-
-                <button type="button" id="btnGoogleLogin" class="btn google">
+                <button type="button" id="btnGoogle" class="btn google">
                     <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt=""> Google দিয়ে লগইন / অ্যাকাউন্ট
                 </button>
-                <form id="loginForm" style="display:none!important;" aria-hidden="true">
-                    <input type="text" id="lInput"><input type="password" id="lPass">
-                    <button type="submit" id="loginBtn"></button>
-                </form>
-                <button type="button" id="btnGoogleReg" style="display:none!important;"></button>
-                <a id="btnGoReg" style="display:none"></a>
-                <a id="btnGoForgot" style="display:none"></a>
-                <a id="btnGoLogin" style="display:none"></a>
-            </div>
-
-            <!-- REGISTER -->
-            <div id="reg" class="panel" style="display:none!important">
-                <form id="regForm">
-                    <div class="ib">
-                        <label>সম্পূর্ণ নাম</label>
-                        <div class="iw"><i class="fa-regular fa-user"></i>
-                            <input type="text" id="rName" autocomplete="name" placeholder="আপনার নাম" minlength="3" required>
-                        </div>
-                    </div>
-                    <div class="ib">
-                        <label>ইমেইল</label>
-                        <div class="iw"><i class="fa-regular fa-envelope"></i>
-                            <input type="email" id="rEmail" lang="en" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" placeholder="example@domain.com" required>
-                        </div>
-                    </div>
-                    <div class="ib">
-                        <label>জন্ম সাল (শুধু সাল)</label>
-                        <button type="button" id="btnPickYear" class="btn sec" style="margin-top:0;">
-                            <i class="fa-solid fa-cake-candles"></i> <span id="yearLabel">সাল নির্বাচন করুন</span>
-                        </button>
-                        <input type="hidden" id="rBirthYear" value="">
-                        <div id="yearPicker" style="display:none;">
-                            <div class="year-grid" id="yearGrid"></div>
-                            <div class="selected-year" id="yearSelectedText"></div>
-                        </div>
-                        <small class="help">৫ বছরের নিচে অ্যাকাউন্ট খোলা যাবে না।</small>
-                    </div>
-                    <div class="ib">
-                        <label>ইউআইডি (UID - ৮ সংখ্যা)</label>
-                        <div class="uid-row">
-                            <input type="text" id="rUid" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off" placeholder="৮ সংখ্যা" required>
-                            <button type="button" class="gbtn" id="btnGenUid"><i class="fa-solid fa-wand-magic-sparkles"></i> অটো</button>
-                        </div>
-                        <div id="uidErr" class="err">* ০ দিয়ে শুরু করা যাবে না!</div>
-                    </div>
-                    <div class="ib">
-                        <label>পাসওয়ার্ড <span style="font-weight:400;color:#94a3b8;">(ঐচ্ছিক)</span></label>
-                        <div class="iw"><i class="fa-solid fa-lock"></i>
-                            <input type="password" id="rPass" class="has-eye" autocomplete="new-password" placeholder="কমপক্ষে ৬ অক্ষর (ইংরেজি, স্পেস নয়)" minlength="6" required pattern="[^\s\u0980-\u09FF]{6,}" inputmode="latin">
-                            <button type="button" class="eye-btn" data-for="rPass"><i class="fa-regular fa-eye"></i></button>
-                        </div>
-                        <small class="help">পাসওয়ার্ড বাধ্যতামূলক: কমপক্ষে ৬ অক্ষর, স্পেস ও বাংলা অক্ষর চলবে না।</small>
-                    </div>
-                    <button type="submit" id="regBtn" class="btn">ভেরিফিকেশন কোড পাঠান <i class="fa-solid fa-arrow-right"></i></button>
-                </form>
-                <div class="divider">অথবা</div>
-                <button type="button" id="btnGoogleReg" class="btn google">
-                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt=""> Google দিয়ে অ্যাকাউন্ট তৈরি
-                </button>
-                <div class="foot"><p>অ্যাকাউন্ট আছে? <a id="btnGoLogin">লগইন করুন</a></p></div>
             </div>
 
             <!-- YEAR / DATE (Google birth) -->
-            <div id="birthYear" class="panel">
+            <div id="birth" class="panel">
                 <p style="font-size:13px;color:var(--muted);text-align:center;margin-bottom:12px;line-height:1.55;">
-                    Google অ্যাকাউন্টের জন্য জন্ম সাল <b>অথবা</b> পূর্ণ তারিখ দিন। ৫ বছরের নিচে অনুমোদিত নয়।
+                    Google অ্যাকাউন্টের জন্য জন্ম সাল <b>অথবা</b> পূর্ণ তারিখ দিন (যেকোনো একটি)। ৫ বছরের নিচে অনুমোদিত নয়।
                 </p>
                 <div class="ib" style="margin-bottom:10px;">
-                    <label>জন্ম তারিখ লিখুন (ঐচ্ছিক)</label>
+                    <label>জন্ম তারিখ লিখুন</label>
                     <div style="display:flex;gap:8px;align-items:center;">
                         <div style="flex:1;text-align:center;">
                             <small class="help" style="margin:0 0 4px;display:block;">দিন</small>
-                            <input type="number" id="gDay" min="1" max="31" placeholder="DD" style="padding-left:12px;text-align:center;">
+                            <input type="text" inputmode="numeric" maxlength="2" id="gDay" placeholder="DD" style="text-align:center;">
                         </div>
                         <div style="flex:1;text-align:center;">
                             <small class="help" style="margin:0 0 4px;display:block;">মাস</small>
-                            <input type="number" id="gMonth" min="1" max="12" placeholder="MM" style="padding-left:12px;text-align:center;">
+                            <input type="text" inputmode="numeric" maxlength="2" id="gMonth" placeholder="MM" style="text-align:center;">
                         </div>
                         <div style="flex:1.2;text-align:center;">
                             <small class="help" style="margin:0 0 4px;display:block;">বছর</small>
-                            <input type="number" id="gYearInp" min="1920" max="2099" placeholder="YYYY" style="padding-left:12px;text-align:center;">
+                            <input type="text" inputmode="numeric" maxlength="4" id="gYear" placeholder="YYYY" style="text-align:center;">
                         </div>
                     </div>
                     <small class="help">উদাহরণ: দিন ০৫ · মাস ০৩ · বছর ২০০৮</small>
                 </div>
                 <p style="font-size:12px;color:var(--muted);text-align:center;margin:8px 0;">— অথবা নিচ থেকে শুধু সাল বেছে নিন —</p>
-                <div class="year-grid" id="gYearGrid"></div>
-                <div class="selected-year" id="gYearSelectedText"></div>
-                <div id="gAgeDisplay" style="text-align:center;font-size:15px;font-weight:700;color:#4ade80;margin:8px 0;min-height:1.4em;"></div>
-                <button type="button" id="btnConfirmGYear" class="btn" disabled>নিশ্চিত করুন</button>
-                <button type="button" class="btn sec" id="btnCancelGYear">বাতিল</button>
-            </div>
-
-            <!-- VERIFY -->
-            <div id="verify" class="panel" style="display:none!important">
-                <div style="text-align:center;padding:4px 0 8px;">
-                    <p style="font-size:13px;color:var(--muted);">ইমেইল: <strong id="vEmailDisplay" style="color:var(--green);">---</strong></p>
-                    <p style="font-size:13px;color:var(--muted);margin-top:8px;">টোকেন আইডি:</p>
-                    <div class="token-box" id="vTokenDisplay">------</div>
-                    <p style="font-size:12px;color:var(--muted);line-height:1.6;">৫ মিনিটের মধ্যে ইমেইলের কোড দিন।</p>
-                </div>
-                <form id="verifyForm">
-                    <div class="ib">
-                        <label>ভেরিফিকেশন কোড (৬ সংখ্যা)</label>
-                        <div class="iw"><i class="fa-solid fa-shield-halved"></i>
-                            <input type="text" id="vCodeInput" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="কোড" required>
-                        </div>
-                    </div>
-                    <button type="submit" id="verifyBtn" class="btn">নিশ্চিত করুন <i class="fa-solid fa-check"></i></button>
-                    <button type="button" class="btn sec" id="btnBackFromVerify">পিছনে যান</button>
-                </form>
-            </div>
-
-            <!-- FORGOT -->
-            <div id="forgot" class="panel" style="display:none!important">
-                <p style="font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:14px;text-align:center;">
-                    ইমেইল বা UID দিন। অ্যাকাউন্ট থাকলেই কোড যাবে।
-                </p>
-                <form id="forgotForm">
-                    <div class="ib">
-                        <label>ইমেইল অথবা UID</label>
-                        <div class="iw"><i class="fa-regular fa-envelope"></i>
-                            <input type="text" id="fInput" placeholder="email বা UID" required>
-                        </div>
-                    </div>
-                    <button type="submit" id="forgotBtn" class="btn">ভেরিফিকেশন কোড পাঠান</button>
-                    <button type="button" class="btn sec" id="btnBackFromForgot">পিছনে যান</button>
-                </form>
+                <div class="year-grid" id="grid"></div>
+                <div class="selected-year" id="selTxt"></div>
+                <div id="age" style="text-align:center;font-size:15px;font-weight:700;color:#4ade80;margin:8px 0;min-height:1.4em;"></div>
+                <button type="button" class="btn sec" id="btnReset" style="margin-top:0;margin-bottom:8px;">আবার নির্বাচন করুন</button>
+                <button type="button" id="btnConfirm" class="btn" disabled>নিশ্চিত করুন</button>
+                <button type="button" class="btn sec" id="btnCancel">বাতিল</button>
             </div>
 
             <!-- SUCCESS -->
             <div id="success" class="panel">
                 <div class="success-box">
                     <div class="big-icon">✅</div>
-                    <h3 id="successTitle">লগইন সফল!</h3>
-                    <p id="successMsg">অ্যাপে ফিরে যান — অটো লগইন হবে।</p>
-                    <button type="button" class="btn" id="btnReturnApp">অ্যাপে ফিরে যান 🚀</button>
+                    <h3 id="okTitle">লগইন সফল!</h3>
+                    <p id="okMsg">অ্যাপে ফিরে যান — অটো লগইন হবে।</p>
+                    <button type="button" class="btn" id="btnReturn">অ্যাপে ফিরে যান 🚀</button>
                     <button type="button" class="btn sec" id="btnSwitchAcc">অন্য অ্যাকাউন্টে লগইন</button>
                 </div>
             </div>
@@ -280,986 +164,310 @@
     </div>
 
 <script>
-/*
- * লগইন পেজ চলে: https://khalidurrahmanakondo-prog.github.io/My-APK-/
- * authDomain অবশ্যই *.firebaseapp.com (Google OAuth handler এখানেই থাকে)
- * GitHub domain শুধু Firebase Console → Authorized domains-এ থাকলেই চলে
- */
-const GITHUB_SITE_HOST = "khalidurrahmanakondo-prog.github.io";
 const GITHUB_LOGIN_URL = "https://khalidurrahmanakondo-prog.github.io/My-APK-/";
+firebase.initializeApp({
+  apiKey: "AIzaSyDUrso1G3orSxiZGTQ1vNYnmN0jdnJ3nSM",
+  authDomain: "kr-calculator-a-bc1e2.firebaseapp.com",
+  databaseURL: "https://kr-calculator-a-bc1e2-default-rtdb.firebaseio.com",
+  projectId: "kr-calculator-a-bc1e2",
+  storageBucket: "kr-calculator-a-bc1e2.firebasestorage.app",
+  messagingSenderId: "916522220428",
+  appId: "1:916522220428:web:b39f14d38c9fe45ecaf4a9",
+  measurementId: "G-K4XGHWM4QF"
+});
+const db = firebase.firestore(), auth = firebase.auth();
+let rtdb = null; try { rtdb = firebase.database(); } catch (e) {}
+const COL = "KR pro math master", VER = "1.1.0.1", CREDIT0 = 5, MIN_AGE = 5;
+const LEGACY = [VER, "1.0.1", "1.0.0", "1.0", "1"].filter((v, i, a) => a.indexOf(v) === i);
+const TS = () => firebase.firestore.FieldValue.serverTimestamp();
+const $ = id => document.getElementById(id);
+const q = new URLSearchParams(location.search);
+const SID = (v => /^[a-f0-9]{16,64}$/i.test(v || "") ? v : null)(q.get("sid"));
 
-const firebaseConfig = {
-    apiKey: "AIzaSyDUrso1G3orSxiZGTQ1vNYnmN0jdnJ3nSM",
-    authDomain: "kr-calculator-a-bc1e2.firebaseapp.com",
-    // ⚠️ Firebase Console → Realtime Database → উপরে যে URL দেখায় ঠিক সেটা বসান (রিজিয়ন আলাদা হলে URL আলাদা হয়)
-    databaseURL: "https://kr-calculator-a-bc1e2-default-rtdb.firebaseio.com",
-    projectId: "kr-calculator-a-bc1e2",
-    storageBucket: "kr-calculator-a-bc1e2.firebasestorage.app",
-    messagingSenderId: "916522220428",
-    appId: "1:916522220428:web:b39f14d38c9fe45ecaf4a9",
-    measurementId: "G-K4XGHWM4QF"
-};
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-const auth = firebase.auth();
-let rtdb = null;
-try { rtdb = firebase.database(); } catch (e) { console.warn("Realtime Database চালু হয়নি:", e && e.message); }
-
-const FIREBASE_COLLECTION_NAME = "KR pro math master";
-const APP_VERSION = "1.1.0.1";
-const INITIAL_NEW_USER_CREDITS = 5;
-const MAX_DEBT_CREDIT = 1;
-const MIN_AGE = 5;
-const EMAILJS_PUBLIC = "h6otK23mXSSYHsa0U";
-const EMAILJS_SERVICE = "service_afly37j";
-const EMAILJS_TEMPLATE = "template_c3khrm2";
-const KNOWN_VERSIONS = [APP_VERSION, "1.1.0.1", "1.0.1", "1.0.0", "1.0", "1"];
-
-const PortalStorage = {
-    getSavedAccounts: () => { try { return JSON.parse(localStorage.getItem("kr_saved_accounts") || "[]"); } catch(e){ return []; } },
-    addSavedAccount: (u) => {
-        let list = PortalStorage.getSavedAccounts();
-        list = list.filter(x => x.user_profile?.email !== u.user_profile?.email && x.user_profile?.uid !== u.user_profile?.uid);
-        list.unshift(u);
-        localStorage.setItem("kr_saved_accounts", JSON.stringify(list));
-    },
-    setCur: (u) => { if (!u) localStorage.removeItem("kr_cur_user"); else localStorage.setItem("kr_cur_user", JSON.stringify(u)); },
-    cur: () => { try { return JSON.parse(localStorage.getItem("kr_cur_user") || "null"); } catch(e){ return null; } }
-};
-
-/* অ্যাপ ?sid=... দিয়ে খোলে। লগইন সফল হলে Firebase LoginSessions-এ UID লিখি — অ্যাপ অটো সিঙ্ক করে।
-   শুধু UID ম্যানুয়াল লগইন নয়; সেশন দিয়েই ডেটা সিঙ্ক (নাম/ছবি/ক্রেডিট অ্যাপ Firebase থেকে আনে)। */
-const KR_SID = (function() {
-    try { const v = new URLSearchParams(location.search).get("sid"); return /^[a-f0-9]{16,64}$/i.test(v || "") ? v : null; } catch (e) { return null; }
+/* ---------- UI ---------- */
+(function brand() {
+  const n = q.get("app_name") || "", l = q.get("app_logo") || "";
+  if (n) { $("appName").textContent = n; $("appName").style.display = "block"; }
+  if (/^https?:/i.test(l)) { $("appLogo").src = l; $("sharedLogoBox").style.display = "flex"; }
 })();
-async function writeLoginSession(userData) {
-    if (!userData || !userData.user_profile || !userData.user_profile.uid) return false;
-    const uid = String(userData.user_profile.uid);
-    const ver = userData.foundVersion || userData.version || APP_VERSION;
-    const now = Date.now();
-    const payload = {
-        uid: uid,
-        ver: ver,
-        name: userData.user_profile.name || "",
-        email: String(userData.user_profile.email || "").toLowerCase().trim(),
-        avatar: userData.avatar || "",
-        credit: Number(userData.user_credit) || 0,
-        birth_year: userData.user_profile.birth_year || "",
-        joined: userData.user_profile.joined || "",
-        at: now,
-        expiresAt: now + 15 * 60 * 1000
-    };
-    const fsPayload = Object.assign({}, payload, {
-        at: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    let ok = false;
-    const jobs = [];
-    // ১) Firestore LoginSessions
-    if (KR_SID) {
-        jobs.push(
-            db.collection(FIREBASE_COLLECTION_NAME).doc(APP_VERSION).collection("LoginSessions").doc(KR_SID)
-                .set(fsPayload, { merge: true }).then(function() { ok = true; }).catch(function(e) {
-                    console.warn("[KR] FS LoginSession:", e && e.message);
-                })
-        );
-    }
-    jobs.push(
-        db.collection(FIREBASE_COLLECTION_NAME).doc(APP_VERSION).collection("LoginSessions")
-            .doc("last_" + uid.replace(/[^a-zA-Z0-9_-]/g, "_"))
-            .set(fsPayload, { merge: true }).catch(function() {})
-    );
-    // ২) Realtime DB — অ্যাপ সহজে পড়তে পারে (Firestore rule ব্লক হলেও)
-    if (typeof rtdb !== "undefined" && rtdb) {
-        if (KR_SID) {
-            jobs.push(
-                rtdb.ref(FIREBASE_COLLECTION_NAME + "/LoginSessions/" + KR_SID).set(payload)
-                    .then(function() { ok = true; }).catch(function(e) {
-                        console.warn("[KR] RTDB LoginSession:", e && e.message);
-                    })
-            );
-        }
-        jobs.push(
-            rtdb.ref(FIREBASE_COLLECTION_NAME + "/LoginSessions/last").set(payload).catch(function() {})
-        );
-    }
-    await Promise.all(jobs);
-    return ok;
+function toast(m, t) {
+  const e = document.createElement("div"); e.className = "toast " + (t || ""); e.textContent = m;
+  $("toasts").appendChild(e); setTimeout(() => e.remove(), 4000);
+}
+function go(id) {
+  document.querySelectorAll(".panel").forEach(p => p.classList.remove("on")); $(id).classList.add("on");
+  const m = { login: ["লগইন / সাইন ইন", "শুধু Google অ্যাকাউন্ট দিয়ে নিরাপদ লগইন।"], birth: ["জন্ম সাল", "সাল নির্বাচন করুন।"], success: ["সফল!", "অ্যাপে ফিরে যান।"] }[id];
+  $("heading").textContent = m[0]; $("desc").textContent = m[1];
+}
+function busy(btn, on, txt) {
+  if (on) { btn.dataset.o = btn.innerHTML; btn.disabled = true; btn.textContent = txt || "..."; }
+  else { btn.disabled = false; if (btn.dataset.o) btn.innerHTML = btn.dataset.o; }
 }
 
-function toast(msg, type) {
-    const el = document.createElement("div");
-    el.className = "toast" + (type === "err" ? " err" : type === "info" ? " info" : "");
-    el.textContent = msg;
-    document.getElementById("toastWrap").appendChild(el);
-    setTimeout(() => { el.style.opacity = "0"; setTimeout(() => el.remove(), 400); }, 4500);
-}
-function goPanel(id) {
-    document.querySelectorAll(".panel").forEach(p => p.classList.remove("on"));
-    const t = document.getElementById(id); if (t) t.classList.add("on");
-    const map = {
-        login: ["লগইন / সাইন ইন", "শুধু Google অ্যাকাউন্ট দিয়ে নিরাপদ লগইন।"],
-        reg: ["নতুন অ্যাকাউন্ট", "নাম, ইমেইল, জন্ম সাল ও UID।"],
-        verify: ["ভেরিফিকেশন", "৫ মিনিটের মধ্যে কোড দিন।"],
-        forgot: ["পাসওয়ার্ড পুনরুদ্ধার", "অ্যাকাউন্ট থাকলেই কোড যাবে।"],
-        birthYear: ["জন্ম সাল", "সাল নির্বাচন করুন।"],
-        success: ["সফল!", "অ্যাপে ফিরে যান।"]
-    };
-    if (map[id]) { document.getElementById("heading").textContent = map[id][0]; document.getElementById("desc").textContent = map[id][1]; }
-}
-function setLoading(btn, on, text) {
-    if (!btn) return;
-    if (on) { if (!btn.dataset.orig) btn.dataset.orig = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> ' + (text || "..."); }
-    else { btn.disabled = false; if (btn.dataset.orig) { btn.innerHTML = btn.dataset.orig; delete btn.dataset.orig; } }
-}
-function maskEmail(email) {
-    if (!email || !email.includes("@")) return email || "—";
-    const [n,d] = email.split("@");
-    return n.length <= 3 ? n[0]+"***@"+d : n.slice(0,4)+"***"+n.slice(-2)+"@"+d;
-}
-async function returnToApp() {
-    const cur = PortalStorage.cur();
-    // সেশন দ্রুত লেখো (সর্বোচ্চ ১.২ সেকেন্ড অপেক্ষা)
-    try { await Promise.race([writeLoginSession(cur), new Promise(r => setTimeout(r, 1200))]); } catch(e){}
-    try { notifyApp(cur); } catch(e){}
-    try { if (window.opener) { window.opener.focus(); window.close(); return; } } catch(e){}
-    // WebView: আগের ক্যালকুলেটর পেজে ফিরে যাও
-    try {
-        if (history.length > 1) { history.back(); return; }
-    } catch(e){}
-    try { window.close(); } catch(e){}
-    toast("অ্যাপে ফিরে যান — লগইন সেভ হয়েছে।", "info");
-}
-document.getElementById("btnReturnApp").addEventListener("click", returnToApp);
-document.getElementById("btnSwitchAcc").addEventListener("click", () => { PortalStorage.setCur(null); goPanel("login"); });
+/* ---------- Firebase helpers (সব সমান্তরালে) ---------- */
+const emailKey = e => String(e || "").toLowerCase().trim().replace(/[.#$[\]]/g, "_");
+const idxRef = e => db.collection(COL).doc(VER).collection("EmailIndex").doc(emailKey(e));
+const blockRef = e => db.collection(COL).doc(VER).collection("BlockedEmails").doc(emailKey(e));
+const profRef = (uid, ver) => (ver && ver !== "flat" && ver !== VER
+  ? db.collection(COL).doc(ver).collection("Users").doc(uid) : db.collection(COL).doc(uid));
 
-/* Password: min 6, no space, no Bengali */
-function isValidPassword(pw) {
-    if (!pw || typeof pw !== "string") return false;
-    if (pw.length < 6) return false;
-    if (/\s/.test(pw)) return false;
-    if (/[\u0980-\u09FF]/.test(pw)) return false; // বাংলা
-    return true;
+async function isBlocked(email) { try { const s = await blockRef(email).get(); return s.exists && s.data().blocked === true; } catch (e) { return false; } }
+function blockEmail(email, why) { return blockRef(email).set({ email, blocked: true, reason: why, at: TS() }, { merge: true }).catch(() => {}); }
+
+async function packUser(ref, p, ver) {
+  const g = r => r.get().catch(() => null);
+  const [cs, ds, bs, pm] = await Promise.all([
+    g(ref.collection("Credit").doc("app_Credit")), g(ref.collection("Credit").doc("app_Debt")),
+    g(ref), g(ref.collection("Permission").doc("app_Permission"))]);
+  return {
+    app: COL, version: ver, foundVersion: ver, user_profile: p,
+    user_credit: cs && cs.exists ? Number(cs.data().user_credit) || 0 : 0,
+    debt_credit: ds && ds.exists ? Number(ds.data().debt_credit) || 0 : 0,
+    avatar: bs && bs.exists ? bs.data().avatar || null : null,
+    isCircle: bs && bs.exists ? bs.data().isCircle ?? false : false,
+    app_permission: !(p.app_permission === false || (pm && pm.exists && pm.data().allowed === false))
+  };
 }
-function passwordError(pw) {
-    if (!pw) return "পাসওয়ার্ড বাধ্যতামূলক (কমপক্ষে ৬ অক্ষর)।";
-    if (/\s/.test(pw)) return "পাসওয়ার্ডে স্পেস দেওয়া যাবে না।";
-    if (/[\u0980-\u09FF]/.test(pw)) return "পাসওয়ার্ডে বাংলা লেখা যাবে না।";
-    if (pw.length < 6) return "পাসওয়ার্ড কমপক্ষে ৬ অক্ষর হতে হবে।";
-    return null;
+async function findByUid(uid) {
+  const tries = [{ ref: db.collection(COL).doc(uid), ver: "flat" }]
+    .concat(LEGACY.map(v => ({ ref: db.collection(COL).doc(v).collection("Users").doc(uid), ver: v })));
+  const res = await Promise.all(tries.map(async t => {
+    try { const s = await t.ref.collection("Profile").doc("user_Profile").get();
+      if (s.exists) return { t, p: Object.assign({ uid }, s.data()) }; } catch (e) {} return null; }));
+  const hit = res.find(Boolean);
+  return hit ? packUser(hit.t.ref, hit.p, hit.t.ver) : null;
 }
-/* Password hash (SHA-256) */
-async function hashPass(pw) {
-    if (!pw) return null;
-    const data = new TextEncoder().encode("kr#" + pw + "#salt");
-    const buf = await crypto.subtle.digest("SHA-256", data);
-    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,"0")).join("");
+async function findByEmail(email) {
+  const none = () => { throw 0; };
+  const viaUid = u => findByUid(u).then(r => r || none());
+  let hint = null; try { hint = JSON.parse(localStorage.getItem("kr_email_uid") || "{}")[email]; } catch (e) {}
+  const racers = [
+    idxRef(email).get().then(s => (s.exists && s.data().uid) ? viaUid(s.data().uid) : none()),
+    db.collectionGroup("Profile").where("email", "==", email).limit(10).get().then(async snap => {
+      for (const d of snap.docs) {
+        const p = d.data() || {}, parts = d.ref.path.split("/"), ui = parts.indexOf("Users");
+        let uid, ver;
+        if (ui >= 1) { ver = parts[ui - 1]; uid = p.uid || parts[ui + 1]; }
+        else if (parts[2] === "Profile") { ver = "flat"; uid = p.uid || parts[1]; }
+        if (!uid) continue;
+        p.uid = uid; p.email = p.email || email;
+        return packUser(profRef(uid, ver), p, ver);
+      }
+      return none();
+    })
+  ];
+  if (hint) racers.push(viaUid(hint));
+  return Promise.any(racers).catch(() => null);
 }
-/* অ্যাপ থেকে নাম/লোগো শেয়ার */
-(function applySharedBrand() {
-    try {
-        const q = new URLSearchParams(location.search || "");
-        const name = q.get("app_name") || q.get("appName") || "";
-        const logo = q.get("app_logo") || q.get("appLogo") || "";
-        if (name) {
-            const el = document.getElementById("sharedAppName");
-            if (el) { el.textContent = name; el.style.display = "block"; }
-        }
-        if (logo) {
-            const img = document.getElementById("sharedAppLogo");
-            const box = document.getElementById("sharedLogoBox");
-            if (img && box) { img.src = logo; box.style.display = "flex"; }
-        }
-    } catch (e) {}
+function bindEmail(email, uid, name) {
+  email = String(email || "").toLowerCase().trim(); if (!email || !uid) return;
+  const r = db.collection(COL).doc(uid);
+  Promise.all([
+    idxRef(email).set({ email, uid, name: name || "", at: TS() }, { merge: true }),
+    r.collection("Profile").doc("user_Profile").set({ email, uid, updatedAt: TS() }, { merge: true }),
+    r.collection("Permission").doc("app_Permission").set({ email, uid, updatedAt: TS() }, { merge: true })
+  ]).catch(() => {});
+}
+async function newUid() {
+  for (let i = 0; i < 5; i++) {
+    const uid = "KR-" + Math.floor(1e7 + Math.random() * 9e7);
+    try { const s = await db.collection(COL).doc(uid).collection("Profile").doc("user_Profile").get(); if (!s.exists) return uid; }
+    catch (e) { return uid; }
+  }
+  return "KR-" + (Date.now() % 9e7 + 1e7);
+}
+async function saveNewUser(u) {
+  const p = u.user_profile, uid = p.uid, ref = db.collection(COL).doc(uid), t = TS();
+  const jobs = [
+    ref.set({ uid, app: COL, version: VER, avatar: u.avatar || null, isCircle: true, updatedAt: t }, { merge: true }),
+    ref.collection("Profile").doc("user_Profile").set(Object.assign({}, p, { version: VER, app_permission: true }), { merge: true }),
+    ref.collection("Permission").doc("app_Permission").set({ allowed: true, uid, email: p.email || "", version: VER, updatedAt: t }, { merge: true })
+  ];
+  if (rtdb) jobs.push(rtdb.ref(COL + "/" + uid).set({ uid, app_Credit: { user_credit: u.user_credit, uid, createdAt: Date.now() } }));
+  bindEmail(p.email, uid, p.name);
+  await Promise.all(jobs);
+}
+/* পুরনো (লেগাসি) ইউজারের জন্য ফ্ল্যাট কপি — ব্যাকগ্রাউন্ডে, কেউ অপেক্ষা করে না */
+function ensureFlat(u) {
+  const p = u.user_profile; if (!p || !p.uid || u.foundVersion === "flat") return;
+  const ref = db.collection(COL).doc(p.uid), pr = ref.collection("Profile").doc("user_Profile");
+  pr.get().then(s => { if (!s.exists) { const c = Object.assign({}, p); delete c.password_hash;
+    ref.set({ uid: p.uid, app: COL, createdAt: TS() }, { merge: true }); pr.set(c); } }).catch(() => {});
+  if (rtdb) rtdb.ref(COL + "/" + p.uid).transaction(cur => cur !== null ? undefined :
+    { uid: p.uid, app_Credit: { user_credit: Number(u.user_credit) || 0, uid: p.uid, createdAt: Date.now() } }).catch(() => {});
+}
+
+/* ---------- অ্যাপের সাথে সেশন ---------- */
+function writeSession(u) {
+  const p = u.user_profile, uid = String(p.uid), now = Date.now();
+  const pay = { uid, ver: u.foundVersion || u.version || VER, name: p.name || "", email: String(p.email || "").toLowerCase(),
+    avatar: u.avatar || "", credit: Number(u.user_credit) || 0, birth_year: p.birth_year || "", joined: p.joined || "",
+    at: now, expiresAt: now + 15 * 60 * 1000 };
+  const fs = Object.assign({}, pay, { at: TS() });
+  let done; const first = new Promise(r => done = r); let ok = false;
+  const jobs = [];
+  const win = pr => pr.then(() => { ok = true; done(true); }).catch(() => {});
+  const L = db.collection(COL).doc(VER).collection("LoginSessions");
+  if (SID) { jobs.push(win(L.doc(SID).set(fs, { merge: true }))); if (rtdb) jobs.push(win(rtdb.ref(COL + "/LoginSessions/" + SID).set(pay))); }
+  jobs.push(L.doc("last_" + uid.replace(/[^\w-]/g, "_")).set(fs, { merge: true }).catch(() => {}));
+  if (rtdb) jobs.push(rtdb.ref(COL + "/LoginSessions/last").set(pay).catch(() => {}));
+  Promise.all(jobs).then(() => done(ok));
+  return first;
+}
+function notifyApp(u) {
+  const m = { type: "KR_LOGIN", uid: u.user_profile.uid, ver: u.version };
+  try { window.opener && window.opener.postMessage(m, "*"); } catch (e) {}
+  try { const bc = new BroadcastChannel("kr_auth"); bc.postMessage(m); setTimeout(() => bc.close(), 2000); } catch (e) {}
+  try { window.Android && window.Android.onLoginSuccess && window.Android.onLoginSuccess(JSON.stringify(m)); } catch (e) {}
+}
+let CUR = null, sessP = null;
+function returnToApp() {
+  try { if (window.opener) { window.opener.focus(); window.close(); return; } } catch (e) {}
+  try { if (history.length > 1) { history.back(); return; } } catch (e) {}
+  try { window.close(); } catch (e) {}
+  toast("অ্যাপে ফিরে যান — লগইন সেভ হয়েছে।", "info");
+}
+async function finish(u, title) {
+  u.version = u.foundVersion || u.version || VER; u.app = COL;
+  const c = Object.assign({}, u.user_profile); delete c.password_hash;
+  if (c.email) c.email = String(c.email).toLowerCase().trim();
+  u.user_profile = c; CUR = u;
+  try { localStorage.setItem("kr_cur_user", JSON.stringify(u)); localStorage.setItem("kr_user_uid", c.uid);
+    if (c.email) { const m = JSON.parse(localStorage.getItem("kr_email_uid") || "{}"); m[c.email] = c.uid; localStorage.setItem("kr_email_uid", JSON.stringify(m)); } } catch (e) {}
+  $("okTitle").textContent = title || "লগইন সফল!";
+  $("okMsg").innerHTML = (c.name ? "নাম: <b>" + c.name + "</b><br>" : "") + (c.email ? "ইমেইল: <b>" + c.email + "</b><br>" : "") +
+    "UID: <b style=\"color:#4ade80\">" + c.uid + "</b><br><br>অ্যাপে ফিরে যাচ্ছে…";
+  go("success");
+  sessP = writeSession(u);                         // প্রথম সফল লেখা হলেই ছুটি (সর্বোচ্চ ৭০০ms)
+  await Promise.race([sessP, new Promise(r => setTimeout(r, 700))]);
+  notifyApp(u); bindEmail(c.email, c.uid, c.name); ensureFlat(u);
+  returnToApp();
+}
+$("btnReturn").onclick = () => { if (CUR) notifyApp(CUR); returnToApp(); };
+
+/* ---------- জন্ম তারিখ / সাল (একসাথে দুটো নয়) ---------- */
+const CY = new Date().getFullYear();
+let selYear = null, pend = null;
+const F = ["gDay", "gMonth", "gYear"];
+$("btnSwitchAcc").onclick = () => { CUR = null; try { localStorage.removeItem("kr_cur_user"); } catch (e) {} go("login"); };
+(function () {
+  const g = $("grid");
+  for (let y = CY; y >= CY - 100; y--) {
+    const b = document.createElement("button"); b.type = "button"; b.className = "year-btn"; b.textContent = y;
+    b.onclick = () => { F.forEach(i => $(i).value = ""); g.querySelectorAll(".sel").forEach(x => x.classList.remove("sel"));
+      b.classList.add("sel"); selYear = y; refresh(); };
+    g.appendChild(b);
+  }
 })();
-// ইনপুটে বাংলা/স্পেস আটকানো
-["lPass", "rPass"].forEach(function(id) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.addEventListener("input", function() {
-        let v = el.value || "";
-        v = v.replace(/\s+/g, "").replace(/[\u0980-\u09FF]/g, "");
-        if (v !== el.value) el.value = v;
-    });
+function state() {
+  const [d, m, y] = F.map(i => $(i).value), now = new Date();
+  if (d || m || y) {
+    if (d && m && y.length === 4) {
+      const D = +d, M = +m, Y = +y, dt = new Date(Y, M - 1, D);
+      if (Y >= 1920 && Y <= CY && dt.getFullYear() === Y && dt.getMonth() === M - 1 && dt.getDate() === D && dt <= now) {
+        let age = CY - Y; if (now.getMonth() < M - 1 || (now.getMonth() === M - 1 && now.getDate() < D)) age--;
+        return { valid: true, year: Y, age, date: String(D).padStart(2, "0") + "/" + String(M).padStart(2, "0") + "/" + Y };
+      }
+      return { valid: false, bad: true };
+    }
+    return { valid: false };
+  }
+  return selYear ? { valid: true, year: selYear, age: CY - selYear } : { valid: false };
+}
+function refresh() {
+  const typed = F.some(i => $(i).value);
+  $("grid").classList.toggle("locked", typed);
+  F.forEach(i => $(i).disabled = !!selYear);
+  const s = state(); $("btnConfirm").disabled = !s.valid;
+  $("selTxt").textContent = selYear ? "নির্বাচিত: " + selYear : "";
+  const a = $("age");
+  if (s.valid) { a.textContent = "আপনার বয়স: " + s.age + " বছর"; a.style.color = s.age < MIN_AGE ? "#ef4444" : "#4ade80"; }
+  else if (s.bad) { a.textContent = "তারিখটি সঠিক নয়"; a.style.color = "#ef4444"; }
+  else a.textContent = "";
+}
+function resetBirth() {
+  selYear = null; F.forEach(i => { $(i).value = ""; $(i).disabled = false; });
+  $("grid").querySelectorAll(".sel").forEach(x => x.classList.remove("sel")); refresh();
+}
+[["gDay", 31, 2], ["gMonth", 12, 2], ["gYear", CY, 4]].forEach(([id, max, len]) => {
+  $(id).addEventListener("input", () => {
+    let v = $(id).value.replace(/\D/g, "").slice(0, len);
+    if (id === "gYear") { if (v.length === 4 && +v > CY) v = v.slice(0, 3); }
+    else { if (v && +v > max) v = v.slice(0, -1); if (v.length > 1 && +v === 0) v = "0"; }
+    $(id).value = v;
+    if (v) { selYear = null; $("grid").querySelectorAll(".sel").forEach(x => x.classList.remove("sel")); }
+    refresh();
+  });
 });
-
-function userRef(uid, ver) {
-    // ফ্ল্যাট প্রাইমারি: KR pro math master / {UID}
-    // ver দেওয়া থাকলে লেগাসি পাথ (মাইগ্রেশন)
-    if (ver && ver !== 'flat' && ver !== APP_VERSION) {
-        return db.collection(FIREBASE_COLLECTION_NAME).doc(ver).collection("Users").doc(uid);
+$("btnReset").onclick = resetBirth;
+$("btnCancel").onclick = () => { pend = null; go("login"); };
+$("btnConfirm").onclick = async () => {
+  const s = state(); if (!pend || !s.valid) return;
+  const { email, name, photo, existing, uidP } = pend, btn = $("btnConfirm");
+  if (s.age < MIN_AGE) { if (email) blockEmail(email, "underage_" + s.year); toast("৫ বছরের নিচে অ্যাকাউন্ট নয়। ইমেইল ব্লক।", "err"); pend = null; go("login"); return; }
+  busy(btn, true, "অপেক্ষা...");
+  try {
+    const extra = { birth_year: s.year }; if (s.date) extra.birth_date = s.date;
+    pend = null;
+    if (existing) {
+      Object.assign(existing.user_profile, extra);
+      profRef(existing.user_profile.uid, existing.foundVersion).collection("Profile").doc("user_Profile").set(extra, { merge: true }).catch(() => {});
+      finish(existing, "Google লগইন সফল!");
+    } else {
+      const uid = await uidP;
+      const u = { app: COL, version: VER, foundVersion: VER,
+        user_profile: Object.assign({ name, email, uid, joined: new Date().toLocaleDateString("en-GB"), version: VER, app_permission: true, google: true }, extra),
+        user_credit: CREDIT0, debt_credit: 0, avatar: photo, isCircle: true };
+      await saveNewUser(u);
+      finish(u, "অ্যাকাউন্ট তৈরি হয়েছে!");
     }
-    // নতুন স্ট্রাকচার — সরাসরি UID
-    return db.collection(FIREBASE_COLLECTION_NAME).doc(uid);
-}
-function userRefLegacy(uid, ver) {
-    return db.collection(FIREBASE_COLLECTION_NAME).doc(ver || APP_VERSION).collection("Users").doc(uid);
-}
-function blockedEmailRef(email) {
-    const key = String(email || "").toLowerCase().replace(/[.#$[\]]/g, "_");
-    return db.collection(FIREBASE_COLLECTION_NAME).doc(APP_VERSION).collection("BlockedEmails").doc(key);
-}
+  } catch (e) { console.error(e); toast("তৈরি ব্যর্থ। আবার চেষ্টা করুন।", "err"); }
+  busy(btn, false); refresh();
+};
 
-async function isEmailBlocked(email) {
-    if (!email) return false;
-    try {
-        const s = await blockedEmailRef(email).get();
-        return s.exists && s.data().blocked === true;
-    } catch(e) { return false; }
+/* ---------- Google ---------- */
+async function processGoogle(gu) {
+  if (!gu) { toast("Google ব্যর্থ।", "err"); return; }
+  const email = (gu.email || "").toLowerCase(), name = gu.displayName || email.split("@")[0] || "ইউজার", photo = gu.photoURL || null;
+  const [blocked, existing] = await Promise.all([email ? isBlocked(email) : false, email ? findByEmail(email) : null]);
+  if (blocked) { toast("এই ইমেইল ব্লক।", "err"); return; }
+  if (existing && existing.user_profile && existing.user_profile.uid) {
+    if (existing.app_permission === false) { toast("অ্যাপ ব্যবহারের অনুমতি নেই।", "err"); return; }
+    if (photo && !existing.avatar) existing.avatar = photo;
+    if (!existing.user_profile.email) existing.user_profile.email = email;
+    if (existing.user_profile.birth_year) { finish(existing, "Google লগইন সফল!"); return; }  // জন্মসাল আছে → জিজ্ঞাসা নয়
+    pend = { email, name, photo, existing };               // জন্মসাল নেই → শুধু তখনই
+  } else {
+    pend = { email, name, photo, existing: null, uidP: newUid() };   // নতুন ইউজার: আইডি আগেই তৈরি শুরু
+  }
+  resetBirth(); go("birth");
 }
-async function blockEmail(email, reason) {
-    if (!email) return;
-    await blockedEmailRef(email).set({
-        email: email.toLowerCase(),
-        blocked: true,
-        reason: reason || "underage",
-        at: firebase.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
+function gErr(e) {
+  const c = e && e.code || "";
+  if (c === "auth/unauthorized-domain") return "ডোমেইন অনুমোদিত নয়: " + location.hostname + " — Firebase Authorized domains-এ যোগ করুন।";
+  if (c === "auth/operation-not-allowed") return "Firebase-এ Google Sign-In চালু করুন।";
+  if (c === "auth/popup-closed-by-user") return "পপআপ বন্ধ। আবার চেষ্টা করুন।";
+  if (c === "auth/network-request-failed") return "নেটওয়ার্ক সমস্যা।";
+  return "Google ব্যর্থ: " + (e.message || c);
 }
-
-async function checkPermission(userData) {
-    // app_permission: false হলে লগইন বন্ধ (Firebase থেকে অ্যাডমিন তুলতে পারে)
-    const p = userData.user_profile || {};
-    if (p.app_permission === false || userData.app_permission === false) return false;
-    // Permission ডক
-    try {
-        const uid = p.uid;
-        const ver = userData.foundVersion || userData.version || APP_VERSION;
-        const ps = await userRef(uid, ver).collection("Permission").doc("app_Permission").get();
-        if (ps.exists && ps.data().allowed === false) return false;
-    } catch(e){}
-    return true;
-}
-
-async function findUserByEmailOrUid(input) {
-    const val = String(input || "").trim();
-    if (!val) return null;
-    const isEmail = val.includes("@");
-    let uidCandidate = val;
-    if (!isEmail && !val.startsWith("KR-") && /^\d{8}$/.test(val)) uidCandidate = "KR-" + val;
-    if (!isEmail && val.startsWith("KR-")) uidCandidate = val;
-
-    if (!isEmail) {
-        // ফ্ল্যাট আগে
-        try {
-            const uref = db.collection(FIREBASE_COLLECTION_NAME).doc(uidCandidate);
-            const ps = await uref.collection("Profile").doc("user_Profile").get();
-            if (ps.exists) {
-                const p = ps.data() || {};
-                p.uid = p.uid || uidCandidate;
-                return await packUser(uref, p, 'flat');
-            }
-        } catch(e){}
-        // লেগাসি ভার্সন
-        for (const ver of KNOWN_VERSIONS) {
-            try {
-                const uref = userRefLegacy(uidCandidate, ver);
-                const ps = await uref.collection("Profile").doc("user_Profile").get();
-                if (ps.exists) {
-                    const p = ps.data() || {};
-                    p.uid = p.uid || uidCandidate;
-                    return await packUser(uref, p, ver);
-                }
-            } catch(e){}
-        }
+$("btnGoogle").onclick = async () => {
+  const b = $("btnGoogle"); b.disabled = true;
+  const pv = new firebase.auth.GoogleAuthProvider();
+  pv.setCustomParameters({ prompt: "select_account" }); pv.addScope("profile"); pv.addScope("email");
+  try {
+    try { const r = await auth.signInWithPopup(pv); await processGoogle(r.user); }
+    catch (e) {
+      if (e.code === "auth/unauthorized-domain") throw e;
+      if (/popup|webview|blocked|cancelled/i.test((e.code || "") + (e.message || ""))) { await auth.signInWithRedirect(pv); return; }
+      throw e;
     }
-    if (isEmail) {
-        try {
-            const snap = await db.collectionGroup("Profile").where("email","==",val.toLowerCase()).limit(10).get();
-            for (const doc of snap.docs) {
-                const p = doc.data() || {};
-                const parts = doc.ref.path.split("/");
-                const uidIdx = parts.indexOf("Users");
-                // নতুন কাঠামো (KR pro math master/{UID}/Profile) এখানে বাদ — শুধু ভার্সনযুক্ত পাথ থেকে ক্রেডিট/ঋণ আসে
-                if (uidIdx < 1) continue;
-                const ver = parts[uidIdx - 1];
-                const uid = p.uid || parts[uidIdx + 1];
-                if (!uid) continue;
-                p.uid = uid; p.email = p.email || val.toLowerCase();
-                return await packUser(userRef(uid, ver), p, ver);
-            }
-        } catch(e){ console.warn(e); }
-    }
-    return null;
-}
-
-async function packUser(uref, p, ver) {
-    let credit = 0, debt = 0, avatar = null, isCircle = false, app_permission = true;
-    try {
-        const cs = await uref.collection("Credit").doc("app_Credit").get();
-        if (cs.exists) credit = Number(cs.data().user_credit) || 0;
-    } catch(e){}
-    try {
-        const ds = await uref.collection("Credit").doc("app_Debt").get();
-        if (ds.exists) debt = Number(ds.data().debt_credit) || 0;
-    } catch(e){}
-    try {
-        const bs = await uref.get();
-        if (bs.exists) {
-            avatar = bs.data().avatar || null;
-            isCircle = bs.data().isCircle ?? false;
-        }
-    } catch(e){}
-    try {
-        const perm = await uref.collection("Permission").doc("app_Permission").get();
-        if (perm.exists && perm.data().allowed === false) app_permission = false;
-    } catch(e){}
-    if (p.app_permission === false) app_permission = false;
-    return {
-        app: FIREBASE_COLLECTION_NAME, version: ver, foundVersion: ver,
-        user_profile: p, user_credit: credit, debt_credit: debt,
-        avatar, isCircle, app_permission
-    };
-}
-
-async function isUidTaken(uid) {
-    // ফ্ল্যাট
-    try {
-        const ps = await db.collection(FIREBASE_COLLECTION_NAME).doc(uid).collection("Profile").doc("user_Profile").get();
-        if (ps.exists) return true;
-    } catch(e){}
-    // লেগাসি
-    for (const ver of KNOWN_VERSIONS) {
-        try {
-            const ps = await userRefLegacy(uid, ver).collection("Profile").doc("user_Profile").get();
-            if (ps.exists) return true;
-        } catch(e){}
-    }
-    return false;
-}
-async function generateUniqueUid() {
-    for (let i = 0; i < 40; i++) {
-        const first = String(Math.floor(1 + Math.random()*9));
-        let rest = ""; for (let j=0;j<7;j++) rest += Math.floor(Math.random()*10);
-        const uid = "KR-" + first + rest;
-        if (!(await isUidTaken(uid))) return uid;
-    }
-    return "KR-" + String(Date.now()).slice(-8);
-}
-
-function emailIndexKey(email) {
-    return String(email || "").toLowerCase().trim().replace(/[.#$[\]]/g, "_");
-}
-function emailIndexRef(email) {
-    return db.collection(FIREBASE_COLLECTION_NAME).doc(APP_VERSION).collection("EmailIndex").doc(emailIndexKey(email));
-}
-/** প্রতি ইমেইল = এক UID। ইমেইল ইনডেক্স + প্রোফাইলে ইমেইল লিখে রাখে। */
-async function bindEmailToUid(email, uid, extra) {
-    email = String(email || "").toLowerCase().trim();
-    if (!email || !email.includes("@") || !uid) return false;
-    try {
-        const idx = await emailIndexRef(email).get();
-        if (idx.exists) {
-            const owned = idx.data().uid;
-            if (owned && owned !== uid) return false;
-        }
-        await emailIndexRef(email).set({
-            email, uid,
-            at: firebase.firestore.FieldValue.serverTimestamp(),
-            ...(extra || {})
-        }, { merge: true });
-        const uref = db.collection(FIREBASE_COLLECTION_NAME).doc(uid);
-        await uref.collection("Profile").doc("user_Profile").set({
-            email, uid, updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
-        await uref.collection("Permission").doc("app_Permission").set({
-            email, uid, updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
-        return true;
-    } catch (e) {
-        console.warn("[KR] bindEmailToUid:", e && e.message);
-        return false;
-    }
-}
-async function getUidByEmail(email) {
-    email = String(email || "").toLowerCase().trim();
-    if (!email || !email.includes("@")) return null;
-    try {
-        const s = await emailIndexRef(email).get();
-        if (s.exists && s.data().uid) return s.data().uid;
-    } catch (e) {}
-    return null;
-}
-
-async function saveNewUserToFirebase(userData) {
-    const uid = userData.user_profile.uid;
-    const ver = APP_VERSION;
-    const email = String(userData.user_profile.email || "").toLowerCase().trim();
-    const uref = db.collection(FIREBASE_COLLECTION_NAME).doc(uid);
-    const ts = firebase.firestore.FieldValue.serverTimestamp();
-    const prof = { ...userData.user_profile, uid, version: ver, app_permission: true };
-    if (email) prof.email = email;
-    const credit = userData.user_credit != null ? userData.user_credit : INITIAL_NEW_USER_CREDITS;
-    // একসাথে লেখো — দ্রুত
-    const jobs = [
-        uref.set({ uid, app: FIREBASE_COLLECTION_NAME, version: ver, avatar: userData.avatar || null, isCircle: userData.isCircle ?? true, updatedAt: ts }, { merge: true }),
-        uref.collection("Profile").doc("user_Profile").set(prof, { merge: true }),
-        uref.collection("Permission").doc("app_Permission").set({ allowed: true, uid, email: email || "", version: ver, updatedAt: ts }, { merge: true })
-    ];
-    if (email) jobs.push(bindEmailToUid(email, uid, { name: userData.user_profile.name || "" }));
-    // RTDB ক্রেডিট একসাথে
-    if (typeof rtdb !== "undefined" && rtdb) {
-        jobs.push(rtdb.ref(FIREBASE_COLLECTION_NAME + "/" + uid + "/app_Credit").set({ user_credit: credit, uid: uid, createdAt: Date.now() }));
-    }
-    await Promise.all(jobs);
-}
-
-/*
- * ইউজারের নামে দুই জায়গায় কালেকশন — প্রতি ইউজারের জন্য মাত্র একবার (আগে থেকে থাকলে কিছুই লেখা হয় না)
- *  ১) Firestore:  KR pro math master / {KR-UID} / Profile / user_Profile
- *  ২) Realtime DB: KR pro math master / {KR-UID} / app_Credit   (প্রাথমিক ক্রেডিট)
- */
-async function ensureUserCollections(userData) {
-    const p = userData && userData.user_profile;
-    const uid = p && p.uid;
-    if (!uid) return;
-    const result = { fs: false, rt: false };
-
-    // ১) Firestore — transaction: Profile না থাকলেই শুধু তৈরি
-    try {
-        const root = db.collection(FIREBASE_COLLECTION_NAME).doc(uid);
-        const profRef = root.collection("Profile").doc("user_Profile");
-        await db.runTransaction(async (tx) => {
-            const snap = await tx.get(profRef);
-            if (snap.exists) return;
-            const ts = firebase.firestore.FieldValue.serverTimestamp();
-            const prof = { ...p, uid, createdAt: ts };
-            delete prof.password_hash;
-            tx.set(root, { uid, app: FIREBASE_COLLECTION_NAME, createdAt: ts }, { merge: true });
-            tx.set(profRef, prof);
-        });
-        result.fs = true;
-    } catch (e) { console.warn("[KR] Firestore কালেকশন তৈরি হয়নি:", e && e.message); }
-
-    // ২) Realtime Database — transaction: node না থাকলেই শুধু তৈরি
-    try {
-        if (rtdb) {
-            const c = Number(userData.user_credit);
-            const credit = isNaN(c) ? 0 : c;
-            await rtdb.ref(FIREBASE_COLLECTION_NAME + "/" + uid).transaction((cur) => {
-                if (cur !== null) return;           // আগেই আছে → অপরিবর্তিত
-                return {
-                    uid: uid,
-                    app_Credit: { user_credit: credit, uid: uid, createdAt: Date.now() }
-                };
-            });
-            result.rt = true;
-        }
-    } catch (e) { console.warn("[KR] Realtime DB কালেকশন তৈরি হয়নি:", e && e.message); }
-    return result;
-}
-
-// অ্যাপকে জানানো: শুধু UID পাঠাই, বাকি তথ্য অ্যাপ নিজে Firebase থেকে আনে
-function notifyApp(userData) {
-    const msg = { type: "KR_LOGIN", uid: userData.user_profile.uid, ver: userData.version };
-    try { if (window.opener) window.opener.postMessage(msg, "*"); } catch(e){}
-    try { const bc = new BroadcastChannel("kr_auth"); bc.postMessage(msg); setTimeout(() => bc.close(), 2000); } catch(e){}
-    try { if (window.Android && window.Android.onLoginSuccess) window.Android.onLoginSuccess(JSON.stringify(msg)); } catch(e){}
-}
-
-async function finishLogin(userData, title) {
-    userData.version = userData.foundVersion || userData.version || APP_VERSION;
-    userData.app = FIREBASE_COLLECTION_NAME;
-    if (userData.user_profile) {
-        const copy = { ...userData.user_profile };
-        delete copy.password_hash;
-        if (copy.email) copy.email = String(copy.email).toLowerCase().trim();
-        userData.user_profile = copy;
-    }
-    // ইমেইল থাকলে প্রোফাইল + EmailIndex-এ জোর করে সেভ (প্রতি ইমেইল = এক UID)
-    try {
-        const em = userData.user_profile && userData.user_profile.email;
-        const uid = userData.user_profile && userData.user_profile.uid;
-        if (em && em.includes("@") && uid) {
-            await bindEmailToUid(em, uid, { name: userData.user_profile.name || "" });
-        }
-    } catch (e) {}
-    PortalStorage.setCur(userData);
-    PortalStorage.addSavedAccount(userData);
-    try { localStorage.setItem("kr_user_uid", userData.user_profile.uid); } catch(e){}
-    const uidShow = userData.user_profile.uid || "";
-    const nameShow = userData.user_profile.name || "";
-    const emailShow = userData.user_profile.email || "";
-    document.getElementById("successTitle").textContent = title || "লগইন সফল!";
-    document.getElementById("successMsg").innerHTML =
-        (nameShow ? ("নাম: <b>" + nameShow + "</b><br>") : "") +
-        (emailShow ? ("ইমেইল: <b>" + emailShow + "</b><br>") : "") +
-        "UID: <b style=\"color:#4ade80\">" + uidShow + "</b><br><br>অ্যাপে ফিরে যাচ্ছে…";
-    goPanel("success");
-    // সেশন আগে লেখো (অ্যাপ যেন সাথে সাথে পায়), তারপর ফিরে যাও
-    try { await Promise.race([writeLoginSession(userData), new Promise(r => setTimeout(r, 600))]); } catch(e){}
-    try { notifyApp(userData); } catch(e){}
-    toast("সফল! অ্যাপে ফিরে যাচ্ছে…", "ok");
-    setTimeout(function() { try { returnToApp(); } catch(e){} }, 200);
-    try { ensureUserCollections(userData); } catch(e){}
-}
-
-let pending = null, realVerifyCode = "", realTokenId = "", codeExpireTime = 0, verifyMode = "reg";
-let pendingGoogle = null, gSelectedYear = null;
-
-async function sendVerifyEmail(name, email, uid) {
-    realVerifyCode = String(Math.floor(100000 + Math.random()*900000));
-    realTokenId = String(Math.floor(100000 + Math.random()*900000));
-    codeExpireTime = Date.now() + 5*60*1000;
-    emailjs.init(EMAILJS_PUBLIC);
-    await emailjs.send(EMAILJS_SERVICE, EMAILJS_TEMPLATE, {
-        user_name: name || "User", app_name: FIREBASE_COLLECTION_NAME,
-        token_id: realTokenId, verification_code: realVerifyCode, uid_with_kr: uid || "",
-        time: new Date().toLocaleString("en-GB"), to_email: email, to_name: name || "User",
-        from_name: "KR Pure Application BD"
-    });
-}
-
-/* Year pickers */
-function buildYearGrid(containerId, onSelect) {
-    const grid = document.getElementById(containerId);
-    grid.innerHTML = "";
-    const cy = new Date().getFullYear();
-    for (let y = cy; y >= cy - 100; y--) {
-        const b = document.createElement("button");
-        b.type = "button"; b.className = "year-btn"; b.textContent = y;
-        b.addEventListener("click", () => {
-            grid.querySelectorAll(".year-btn").forEach(x => x.classList.remove("sel"));
-            b.classList.add("sel");
-            onSelect(y);
-        });
-        grid.appendChild(b);
-    }
-}
-buildYearGrid("yearGrid", (y) => {
-    document.getElementById("rBirthYear").value = y;
-    document.getElementById("yearLabel").textContent = "সাল: " + y;
-    document.getElementById("yearSelectedText").textContent = "নির্বাচিত: " + y;
-});
-buildYearGrid("gYearGrid", (y) => {
-    gSelectedYear = y;
-    document.getElementById("gYearSelectedText").textContent = "নির্বাচিত: " + y;
-    document.getElementById("btnConfirmGYear").disabled = false;
-    try { if (typeof updateGAgeDisplay === "function") updateGAgeDisplay(); } catch(e){}
-});
-
-document.getElementById("btnPickYear").addEventListener("click", () => {
-    const el = document.getElementById("yearPicker");
-    el.style.display = el.style.display === "none" ? "block" : "none";
-});
-
-function ageFromYear(year) {
-    return new Date().getFullYear() - Number(year);
-}
-
-/* Eye toggles */
-document.querySelectorAll(".eye-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
-        const inp = document.getElementById(btn.getAttribute("data-for"));
-        if (!inp) return;
-        inp.type = inp.type === "password" ? "text" : "password";
-        btn.innerHTML = inp.type === "password" ? '<i class="fa-regular fa-eye"></i>' : '<i class="fa-regular fa-eye-slash"></i>';
-    });
-});
-
-/* Nav */
-document.getElementById("btnGoReg").addEventListener("click", () => goPanel("reg"));
-document.getElementById("btnGoLogin").addEventListener("click", () => goPanel("login"));
-document.getElementById("btnGoForgot").addEventListener("click", () => goPanel("forgot"));
-document.getElementById("btnBackFromVerify").addEventListener("click", () => goPanel(verifyMode === "forgot" ? "forgot" : verifyMode === "login" ? "login" : "reg"));
-document.getElementById("btnBackFromForgot").addEventListener("click", () => goPanel("login"));
-document.getElementById("btnCancelGYear").addEventListener("click", () => { pendingGoogle = null; goPanel("login"); });
-
-document.getElementById("btnGenUid").addEventListener("click", async () => {
-    const btn = document.getElementById("btnGenUid");
-    btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
-    const uid = await generateUniqueUid();
-    document.getElementById("rUid").value = uid.replace(/^KR-/, "");
-    document.getElementById("uidErr").style.display = "none";
-    btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> অটো';
-});
-
-/* REGISTER */
-document.getElementById("regForm").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const name = document.getElementById("rName").value.trim();
-    const email = document.getElementById("rEmail").value.trim().toLowerCase();
-    const rawUid = document.getElementById("rUid").value.trim();
-    const birthYear = document.getElementById("rBirthYear").value;
-    const pass = document.getElementById("rPass").value;
-    if (name.length < 3) { toast("নামে কমপক্ষে ৩ অক্ষর!", "err"); return; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast("সঠিক ইমেইল!", "err"); return; }
-    if (!birthYear) { toast("জন্ম সাল নির্বাচন করুন!", "err"); return; }
-    if (ageFromYear(birthYear) < MIN_AGE) {
-        await blockEmail(email, "underage_" + birthYear);
-        toast("৫ বছরের নিচে অ্যাকাউন্ট খোলা যাবে না। এই ইমেইল ব্লক করা হয়েছে।", "err");
-        return;
-    }
-    if (await isEmailBlocked(email)) { toast("এই ইমেইল ব্লক করা আছে।", "err"); return; }
-    if (rawUid.length !== 8 || rawUid.startsWith("0")) {
-        document.getElementById("uidErr").style.display = "block";
-        toast("UID ৮ সংখ্যা, ০ দিয়ে শুরু নয়!", "err"); return;
-    }
-    const perr = passwordError(pass);
-    if (perr) { toast(perr, "err"); return; }
-    const uid = "KR-" + rawUid;
-    const regBtn = document.getElementById("regBtn");
-    setLoading(regBtn, true, "যাচাই...");
-    try {
-        if (await isUidTaken(uid)) { toast("UID ইতিমধ্যে ব্যবহৃত!", "err"); setLoading(regBtn, false); return; }
-        if (await findUserByEmailOrUid(email)) { toast("এই ইমেইলে অ্যাকাউন্ট আছে!", "err"); setLoading(regBtn, false); return; }
-        const password_hash = await hashPass(pass);
-        pending = {
-            app: FIREBASE_COLLECTION_NAME, version: APP_VERSION, foundVersion: APP_VERSION,
-            user_profile: {
-                name, email, uid, birth_year: Number(birthYear),
-                joined: new Date().toLocaleDateString("en-GB"), version: APP_VERSION,
-                app_permission: true, password_hash
-            },
-            user_credit: INITIAL_NEW_USER_CREDITS, debt_credit: 0, avatar: null, isCircle: false, isNewAccount: true
-        };
-        verifyMode = "reg";
-        await sendVerifyEmail(name, email, uid);
-        document.getElementById("vEmailDisplay").textContent = maskEmail(email);
-        document.getElementById("vTokenDisplay").textContent = realTokenId;
-        document.getElementById("vCodeInput").value = "";
-        goPanel("verify");
-        toast("কোড পাঠানো হয়েছে!", "ok");
-    } catch(err) { console.error(err); toast("কোড পাঠানো যায়নি।", "err"); }
-    setLoading(regBtn, false);
-});
-
-/* LOGIN */
-document.getElementById("loginForm").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const inputVal = document.getElementById("lInput").value.trim();
-    const pass = document.getElementById("lPass").value;
-    if (!inputVal) { toast("ইমেইল বা UID দিন!", "err"); return; }
-    const loginBtn = document.getElementById("loginBtn");
-    setLoading(loginBtn, true, "খোঁজা...");
-    try {
-        if (inputVal.includes("@") && await isEmailBlocked(inputVal.toLowerCase())) {
-            toast("এই ইমেইল ব্লক করা আছে।", "err"); setLoading(loginBtn, false); return;
-        }
-        let userData = await findUserByEmailOrUid(inputVal);
-        // ইমেইল ইনডেক্স দিয়েও খোঁজা (প্রতি ইমেইল = এক UID)
-        if ((!userData || !userData.user_profile?.uid) && inputVal.includes("@")) {
-            try {
-                const mapped = await getUidByEmail(inputVal.toLowerCase());
-                if (mapped) userData = await findUserByEmailOrUid(mapped);
-            } catch (e) {}
-        }
-        if (!userData || !userData.user_profile?.uid) {
-            toast("অ্যাকাউন্ট পাওয়া যায়নি!", "err"); setLoading(loginBtn, false); return;
-        }
-        if (!(await checkPermission(userData))) {
-            toast("অ্যাপ ব্যবহারের অনুমতি নেই। অ্যাডমিনের সাথে যোগাযোগ করুন।", "err");
-            setLoading(loginBtn, false); return;
-        }
-        // ইমেইল দিয়ে লগইন করলে প্রোফাইলে ইমেইল সেট/আপডেট
-        if (inputVal.includes("@")) {
-            const typedEmail = inputVal.toLowerCase().trim();
-            userData.user_profile.email = typedEmail;
-            try { await bindEmailToUid(typedEmail, userData.user_profile.uid, { name: userData.user_profile.name || "" }); } catch (e) {}
-        }
-        const email = (userData.user_profile.email || "").toLowerCase();
-        if (email && await isEmailBlocked(email)) {
-            toast("এই ইমেইল ব্লক করা আছে।", "err"); setLoading(loginBtn, false); return;
-        }
-        const storedHash = userData.user_profile.password_hash || null;
-        if (storedHash) {
-            // পাসওয়ার্ড সেট আছে → অবশ্যই মিলাতে হবে
-            if (!pass) { toast("এই অ্যাকাউন্টে পাসওয়ার্ড সেট আছে। পাসওয়ার্ড দিন।", "err"); setLoading(loginBtn, false); return; }
-            const h = await hashPass(pass);
-            if (h !== storedHash) { toast("পাসওয়ার্ড ভুল!", "err"); setLoading(loginBtn, false); return; }
-            finishLogin(userData, "লগইন সফল!");
-        } else {
-            // পাসওয়ার্ড নেই → ইমেইল থাকলে কোড, নইলে সরাসরি
-            if (pass) {
-                toast("এই অ্যাকাউন্টে এখনো পাসওয়ার্ড সেট নেই। খালি রেখে লগইন করুন বা প্রোফাইল থেকে সেট করুন।", "err");
-                setLoading(loginBtn, false); return;
-            }
-            if (email && email.includes("@")) {
-                pending = userData; pending.isNewAccount = false; verifyMode = "login";
-                await sendVerifyEmail(userData.user_profile.name || "User", email, userData.user_profile.uid);
-                document.getElementById("vEmailDisplay").textContent = maskEmail(email);
-                document.getElementById("vTokenDisplay").textContent = realTokenId;
-                document.getElementById("vCodeInput").value = "";
-                goPanel("verify");
-                toast("ভেরিফিকেশন কোড পাঠানো হয়েছে!", "ok");
-            } else {
-                finishLogin(userData, "লগইন সফল!");
-            }
-        }
-    } catch(err) { console.error(err); toast("লগইন ব্যর্থ।", "err"); }
-    setLoading(loginBtn, false);
-});
-
-/* FORGOT */
-document.getElementById("forgotForm").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const inputVal = document.getElementById("fInput").value.trim();
-    if (!inputVal) { toast("ইমেইল বা UID দিন!", "err"); return; }
-    const forgotBtn = document.getElementById("forgotBtn");
-    setLoading(forgotBtn, true, "খোঁজা...");
-    try {
-        const userData = await findUserByEmailOrUid(inputVal);
-        if (!userData || !userData.user_profile?.uid) {
-            toast("অ্যাকাউন্ট নেই — কোড পাঠানো হয়নি।", "err"); setLoading(forgotBtn, false); return;
-        }
-        if (!(await checkPermission(userData))) {
-            toast("অনুমতি নেই।", "err"); setLoading(forgotBtn, false); return;
-        }
-        const email = userData.user_profile.email;
-        if (!email || !email.includes("@")) {
-            toast("ইমেইল নেই — কোড যায় না।", "err"); setLoading(forgotBtn, false); return;
-        }
-        pending = userData; pending.isNewAccount = false; verifyMode = "forgot";
-        await sendVerifyEmail(userData.user_profile.name || "User", email, userData.user_profile.uid);
-        document.getElementById("vEmailDisplay").textContent = maskEmail(email);
-        document.getElementById("vTokenDisplay").textContent = realTokenId;
-        document.getElementById("vCodeInput").value = "";
-        goPanel("verify");
-        toast("কোড পাঠানো হয়েছে!", "ok");
-    } catch(err) { toast("ব্যর্থ।", "err"); }
-    setLoading(forgotBtn, false);
-});
-
-/* VERIFY */
-document.getElementById("verifyForm").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const code = document.getElementById("vCodeInput").value.trim();
-    if (Date.now() > codeExpireTime || !realVerifyCode) { toast("কোডের মেয়াদ শেষ!", "err"); return; }
-    if (code !== realVerifyCode) { toast("কোড ভুল!", "err"); return; }
-    if (!pending) { toast("সেশন শেষ।", "err"); goPanel("login"); return; }
-    const verifyBtn = document.getElementById("verifyBtn");
-    setLoading(verifyBtn, true, "সংরক্ষণ...");
-    try {
-        if (pending.isNewAccount) {
-            await saveNewUserToFirebase(pending);
-            finishLogin(pending, "অ্যাকাউন্ট তৈরি হয়েছে!");
-        } else if (verifyMode === "forgot") {
-            // forgot: clear password so they can set new from app, or login
-            try {
-                const uid = pending.user_profile.uid;
-                const ver = pending.foundVersion || APP_VERSION;
-                await userRef(uid, ver).collection("Profile").doc("user_Profile").set({ password_hash: null }, { merge: true });
-                pending.user_profile.password_hash = null;
-            } catch(e){}
-            finishLogin(pending, "পুনরুদ্ধার সফল! প্রোফাইল থেকে নতুন পাসওয়ার্ড সেট করুন।");
-        } else {
-            finishLogin(pending, "লগইন সফল!");
-        }
-    } catch(err) { console.error(err); toast("সেভ ব্যর্থ।", "err"); }
-    setLoading(verifyBtn, false);
-});
-
-/* GOOGLE — ফোনের সব Google ইমেইল দেখাবে (অ্যাকাউন্ট পিকার) */
-function isMobileDevice() {
-    return /Android|iPhone|iPad|iPod|Mobile|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent || "")
-        || (window.matchMedia && window.matchMedia("(max-width: 900px)").matches);
-}
-
-function makeGoogleProvider() {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    // ফোনে থাকা সব অ্যাকাউন্ট দেখানোর জন্য — সিলেক্ট স্ক্রিন বাধ্যতামূলক
-    provider.setCustomParameters({
-        prompt: "select_account",
-        access_type: "online"
-    });
-    provider.addScope("profile");
-    provider.addScope("email");
-    return provider;
-}
-
-
-async function processGoogleUser(gUser) {
-    if (!gUser) { toast("Google ব্যর্থ।", "err"); return; }
-    const email = (gUser.email || "").toLowerCase();
-    const name = gUser.displayName || (email ? email.split("@")[0] : "ইউজার");
-    const photo = gUser.photoURL || null;
-    if (email && await isEmailBlocked(email)) { toast("এই ইমেইল ব্লক।", "err"); return; }
-
-    let existing = email ? await findUserByEmailOrUid(email) : null;
-    if (!existing && email) {
-        try {
-            const mappedUid = await getUidByEmail(email);
-            if (mappedUid) existing = await findUserByEmailOrUid(mappedUid);
-        } catch (e) {}
-    }
-    // পুরনো অ্যাকাউন্ট (ইমেইল/UID পাওয়া গেছে) → জন্মসাল জিজ্ঞাসা নয়, সরাসরি লগইন
-    if (existing && existing.user_profile && existing.user_profile.uid) {
-        if (!(await checkPermission(existing))) { toast("অনুমতি নেই।", "err"); return; }
-        if (photo && !existing.avatar) existing.avatar = photo;
-        if (email && (!existing.user_profile.email || !String(existing.user_profile.email).includes("@"))) {
-            existing.user_profile.email = email;
-        }
-        try { await bindEmailToUid(email, existing.user_profile.uid, { name: existing.user_profile.name || name }); } catch (e) {}
-        finishLogin(existing, "Google লগইন সফল!");
-        return;
-    }
-    // শুধু নতুন ইমেইল → জন্মসাল/তারিখ জিজ্ঞাসা
-    pendingGoogle = { email, name, photo };
-    gSelectedYear = null;
-    try {
-        document.getElementById("gYearSelectedText").textContent = "";
-        document.getElementById("btnConfirmGYear").disabled = true;
-        document.getElementById("gYearGrid").querySelectorAll(".year-btn").forEach(x => x.classList.remove("sel"));
-        const ageEl = document.getElementById("gAgeDisplay");
-        if (ageEl) ageEl.textContent = "";
-        ["gDay","gMonth","gYearInp"].forEach(function(id) {
-            const el = document.getElementById(id);
-            if (el) el.value = "";
-        });
-    } catch (e) {}
-    goPanel("birthYear");
-}
-
-function currentAuthOriginInfo() {
-    const host = (location.hostname || "").toLowerCase();
-    const origin = (location.origin || "").toLowerCase();
-    return { host, origin, href: location.href };
-}
-
-function googleAuthErrorMessage(err) {
-    const code = err && err.code ? String(err.code) : "";
-    const { host, origin } = currentAuthOriginInfo();
-    if (code === "auth/unauthorized-domain") {
-        return "ডোমেইন অনুমোদিত নয় → " + host +
-            " | Firebase Authorized domains + Google Cloud OAuth-এ এই host যোগ করুন। origin=" + origin;
-    }
-    if (code === "auth/operation-not-allowed") return "Firebase → Authentication → Google Sign-In চালু করুন।";
-    if (code === "auth/popup-closed-by-user") return "পপআপ বন্ধ। আবার চেষ্টা করুন।";
-    if (code === "auth/popup-blocked") return "পপআপ ব্লক। ব্রাউজারে অনুমতি দিন।";
-    if (code === "auth/network-request-failed") return "নেটওয়ার্ক সমস্যা।";
-    return "Google ব্যর্থ: " + (err.message || code || "error") + " [" + host + "]";
-}
-
-async function handleGoogle() {
-    const provider = makeGoogleProvider();
-    const btns = [document.getElementById("btnGoogleLogin"), document.getElementById("btnGoogleReg")];
-    btns.forEach(b => { if (b) { b.disabled = true; b.style.opacity = "0.7"; } });
-    const info = currentAuthOriginInfo();
-    console.log("[KR Google] host=", info.host, "origin=", info.origin, "href=", info.href);
-    toast("Google অ্যাকাউন্ট বেছে নিন… (" + info.host + ")", "info");
-
-    try {
-        // মোবাইল: আগে popup (অ্যাকাউন্ট পিকার), ব্যর্থ হলে redirect
-        if (isMobileDevice()) {
-            try {
-                const result = await auth.signInWithPopup(provider);
-                await processGoogleUser(result.user);
-                return;
-            } catch (mobilePopErr) {
-                console.warn("[KR Google] mobile popup → redirect", mobilePopErr);
-                if (mobilePopErr.code === "auth/unauthorized-domain") throw mobilePopErr;
-                try { sessionStorage.setItem("kr_google_pending", "1"); } catch (e) {}
-                await auth.signInWithRedirect(provider);
-                return;
-            }
-        }
-        try {
-            const result = await auth.signInWithPopup(provider);
-            await processGoogleUser(result.user);
-        } catch (popErr) {
-            if (popErr.code === "auth/unauthorized-domain") throw popErr;
-            if (popErr.code === "auth/popup-blocked" ||
-                popErr.code === "auth/popup-closed-by-user" ||
-                popErr.code === "auth/cancelled-popup-request" ||
-                /webview|blocked/i.test(String(popErr.message || ""))) {
-                try { sessionStorage.setItem("kr_google_pending", "1"); } catch (e) {}
-                await auth.signInWithRedirect(provider);
-                return;
-            }
-            throw popErr;
-        }
-    } catch (err) {
-        console.error("[KR Google]", err, currentAuthOriginInfo());
-        toast(googleAuthErrorMessage(err), "err");
-    } finally {
-        btns.forEach(b => { if (b) { b.disabled = false; b.style.opacity = ""; } });
-    }
-}
-document.getElementById("btnGoogleLogin").addEventListener("click", handleGoogle);
-document.getElementById("btnGoogleReg").addEventListener("click", handleGoogle);
-
-document.getElementById("btnConfirmGYear").addEventListener("click", async () => {
-    if (!pendingGoogle || !gSelectedYear) return;
-    const { email, name, photo } = pendingGoogle;
-    if (ageFromYear(gSelectedYear) < MIN_AGE) {
-        if (email) await blockEmail(email, "underage_" + gSelectedYear);
-        toast("৫ বছরের নিচে অ্যাকাউন্ট নয়। ইমেইল ব্লক।", "err");
-        pendingGoogle = null; goPanel("login"); return;
-    }
-    const btn = document.getElementById("btnConfirmGYear");
-    setLoading(btn, true, "তৈরি...");
-    try {
-        const uid = await generateUniqueUid();
-        const userData = {
-            app: FIREBASE_COLLECTION_NAME, version: APP_VERSION, foundVersion: APP_VERSION,
-            user_profile: {
-                name, email, uid, birth_year: gSelectedYear,
-                joined: new Date().toLocaleDateString("en-GB"), version: APP_VERSION,
-                app_permission: true, google: true, password_hash: null
-            },
-            user_credit: INITIAL_NEW_USER_CREDITS, debt_credit: 0,
-            avatar: photo, isCircle: true, isNewAccount: true
-        };
-        await saveNewUserToFirebase(userData);
-        pendingGoogle = null;
-        finishLogin(userData, "Google অ্যাকাউন্ট তৈরি হয়েছে!");
-    } catch(err) { console.error(err); toast("তৈরি ব্যর্থ।", "err"); }
-    setLoading(btn, false);
-});
-
-// Redirect থেকে ফিরে এলে Google ইউজার প্রসেস
-async function handleGoogleRedirectResult() {
-    try {
-        const result = await auth.getRedirectResult();
-        if (result && result.user) {
-            try { sessionStorage.removeItem("kr_google_pending"); } catch (e) {}
-            toast("Google অ্যাকাউন্ট সিলেক্ট হয়েছে…", "info");
-            await processGoogleUser(result.user);
-            return true;
-        }
-    } catch (err) {
-        console.error("getRedirectResult", err);
-        if (err.code === "auth/unauthorized-domain") toast("ডোমেইন Firebase Auth-এ যোগ করুন।", "err");
-        else if (err.code && err.code !== "auth/null-user") toast("Google লগইন ব্যর্থ।", "err");
-    }
-    return false;
-}
-
-function updateGAgeDisplay() {
-    const ageEl = document.getElementById("gAgeDisplay");
-    if (!ageEl) return;
-    let y = gSelectedYear;
-    const yi = document.getElementById("gYearInp");
-    if (yi && yi.value) y = Number(yi.value);
-    if (!y) { ageEl.textContent = ""; return; }
-    const age = ageFromYear(y);
-    if (age < 0) { ageEl.textContent = ""; return; }
-    ageEl.textContent = "আপনার বয়স: প্রায় " + age + " বছর";
-    if (age < MIN_AGE) ageEl.style.color = "#ef4444";
-    else ageEl.style.color = "#4ade80";
-}
-
+  } catch (e) { console.error(e); toast(gErr(e), "err"); }
+  b.disabled = false;
+};
 document.addEventListener("DOMContentLoaded", async () => {
-    // আগে Google redirect রেজাল্ট চেক
-    const fromGoogle = await handleGoogleRedirectResult();
-    if (fromGoogle) return;
-
-    // লিংক ক্লিক = সবসময় নতুন লগইন চাওয়া — “ইতিমধ্যে লগইন” দেখাবে না
-    try { PortalStorage.setCur(null); } catch (e) {}
-    goPanel("login");
-
-    ["gDay", "gMonth", "gYearInp"].forEach(function(id) {
-        const el = document.getElementById(id);
-        if (!el) return;
-        el.addEventListener("input", function() {
-            const y = Number(document.getElementById("gYearInp").value);
-            if (y >= 1920 && y <= new Date().getFullYear()) {
-                gSelectedYear = y;
-                document.getElementById("gYearSelectedText").textContent = "নির্বাচিত: " + y;
-                document.getElementById("btnConfirmGYear").disabled = false;
-            }
-            updateGAgeDisplay();
-        });
-    });
+  try { localStorage.removeItem("kr_cur_user"); } catch (e) {}
+  try { const r = await auth.getRedirectResult(); if (r && r.user) await processGoogle(r.user); }
+  catch (e) { if (e.code && e.code !== "auth/null-user") toast(gErr(e), "err"); }
 });
 </script>
 </body>
