@@ -383,43 +383,58 @@ function handoff(p) {
       avatar: p.avatar
     }));
   } catch (e) {}
-  // RTDB একই পাথ overwrite — ব্যাকগ্রাউন্ডে, অপেক্ষা ছাড়া
-  let job = Promise.resolve();
-  if (rtdb) { try { job = Promise.resolve(rtdb.ref(COL + "/লগইন_সেশন/শেষ").set(pay)).catch(() => null); } catch (e) {} }
-  return job;
+  // অ্যাপ content:// WebView-এ — localStorage শেয়ার হয় না।
+  // তাই Firebase-এর সব পাথে লিখি যা অ্যাপ শোনে।
+  const jobs = [];
+  if (rtdb) {
+    try { jobs.push(Promise.resolve(rtdb.ref(COL + "/লগইন_সেশন/শেষ").set(pay)).catch(function(){})); } catch (e) {}
+    try { jobs.push(Promise.resolve(rtdb.ref(COL + "/LoginSessions/last").set(pay)).catch(function(){})); } catch (e) {}
+  }
+  try {
+    jobs.push(Promise.resolve(db.collection(COL).doc("_session_last").set(pay, { merge: true })).catch(function(){}));
+  } catch (e) {}
+  return Promise.all(jobs).then(function(){ return true; }).catch(function(){ return false; });
 }
 
 function notifyApp(p) {
-  const m = { type: "KR_LOGIN", uid: p.uid };
+  const m = { type: "KR_LOGIN", uid: p.uid, ver: "flat", credit: Number(p.credit || 0), name: p.name || "", email: p.email || "", avatar: p.avatar || "" };
   try { window.opener && window.opener.postMessage(m, "*"); } catch (e) {}
   try { const bc = new BroadcastChannel("kr_auth"); bc.postMessage(m); setTimeout(() => bc.close(), 2000); } catch (e) {}
   try { window.Android && window.Android.onLoginSuccess && window.Android.onLoginSuccess(JSON.stringify(m)); } catch (e) {}
+  try { if (window.parent && window.parent !== window) window.parent.postMessage(m, "*"); } catch (e) {}
 }
 
 let CUR = null;
 function returnToApp() {
-  // অ্যাপ লিঙ্কে ?return=<অ্যাপ URL> দিলে লগইনের পর UID সহ সেখানে ফেরত যাবে
+  // অ্যাপ লিঙ্কে ?return= দিলে UID সহ ফেরত (http/https/content/custom scheme)
   try {
     const ret = q.get("return") || "";
-    if (CUR && CUR.uid && /^https?:\/\//i.test(ret)) {
-      const u = new URL(ret);
-      u.searchParams.set("uid", CUR.uid);
-      location.replace(u.toString());
-      return;
+    if (CUR && CUR.uid && ret && /^(https?:|content:|intent:|android-app:)/i.test(ret)) {
+      try {
+        const u = new URL(ret);
+        u.searchParams.set("uid", CUR.uid);
+        location.replace(u.toString());
+        return;
+      } catch (e1) {
+        // content:// ইত্যাদিতে URL API ব্যর্থ হলে ম্যানুয়াল
+        const joiner = ret.indexOf("?") >= 0 ? "&" : "?";
+        location.replace(ret + joiner + "uid=" + encodeURIComponent(CUR.uid));
+        return;
+      }
     }
   } catch (e) {}
   try { if (window.opener) { window.opener.focus(); window.close(); return; } } catch (e) {}
   try { if (history.length > 1) { history.back(); return; } } catch (e) {}
   try { window.close(); } catch (e) {}
-  toast("অ্যাপে ফিরে যান — লগইন সেভ হয়েছে।", "info");
+  toast("অ্যাপে ফিরে যান — লগইন সেভ হয়েছে। Firebase-এ সিগনাল পাঠানো হয়েছে।", "info");
 }
 
-/** সফল লগইন — Firestore-এ কোনো লেখা নেই; শুধু লোকাল সেভ + অ্যাপকে জানানো */
+/** সফল লগইন — Firebase-এ সেশন লিখে অ্যাপকে জানানো */
 async function finish(p, title) {
   if (window._krFinishing) return;
   window._krFinishing = true;
   CUR = p;
-  const rt = handoff(p);           // localStorage সঙ্গে সঙ্গে; RTDB পেছনে চলে
+  const rt = handoff(p);           // RTDB + Firestore _session_last — অ্যাপ এটা পড়ে
   notifyApp(p);                    // অ্যাপকে তখনই জানাও
   $("okTitle").textContent = title || "লগইন সফল!";
   $("okMsg").innerHTML =
@@ -433,8 +448,8 @@ async function finish(p, title) {
     (p.credit != null ? "ক্রেডিট: <b>" + esc(p.credit) + "</b><br>" : "") +
     "<br>অ্যাপে ফিরে যাচ্ছে…";
   go("success");
-  // RTDB লেখা শেষ হওয়ার জন্য সর্বোচ্চ ০.৪ সেকেন্ড, তারপর ফেরত
-  await Promise.race([rt, new Promise(r => setTimeout(r, 400))]);
+  // Firebase লেখার জন্য অপেক্ষা (অ্যাপ content:// হলে এটাই একমাত্র সিগনাল)
+  await Promise.race([rt, new Promise(r => setTimeout(r, 2500))]);
   returnToApp();
   setTimeout(function () { window._krFinishing = false; }, 2500);
 }
