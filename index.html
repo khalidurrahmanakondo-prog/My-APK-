@@ -315,16 +315,25 @@ function writeSession(u) {
   const p = u.user_profile, uid = String(p.uid), now = Date.now();
   const pay = { uid, ver: u.foundVersion || u.version || VER, name: p.name || "", email: String(p.email || "").toLowerCase(),
     avatar: u.avatar || "", credit: Number(u.user_credit) || 0, birth_year: p.birth_year || "", joined: p.joined || "",
-    at: now, expiresAt: now + 15 * 60 * 1000 };
+    at: now, expiresAt: now + 15 * 60 * 1000, app: COL };
   const fs = Object.assign({}, pay, { at: TS() });
   let done; const first = new Promise(r => done = r); let ok = false;
   const jobs = [];
   const win = pr => pr.then(() => { ok = true; done(true); }).catch(() => {});
   const L = db.collection(COL).doc(VER).collection("LoginSessions");
-  if (SID) { jobs.push(win(L.doc(SID).set(fs, { merge: true }))); if (rtdb) jobs.push(win(rtdb.ref(COL + "/LoginSessions/" + SID).set(pay))); }
+  // sid থাকলে সেখানে লেখো
+  if (SID) {
+    jobs.push(win(L.doc(SID).set(fs, { merge: true })));
+    if (rtdb) jobs.push(win(rtdb.ref(COL + "/LoginSessions/" + SID).set(pay)));
+  }
+  // সবসময় last লেখো — অ্যাপ sid হারালেও / টেস্ট লগইনেও সিঙ্ক হবে
+  jobs.push(win(L.doc("last").set(fs, { merge: true })));
   jobs.push(L.doc("last_" + uid.replace(/[^\w-]/g, "_")).set(fs, { merge: true }).catch(() => {}));
-  if (rtdb) jobs.push(rtdb.ref(COL + "/LoginSessions/last").set(pay).catch(() => {}));
-  Promise.all(jobs).then(() => done(ok));
+  if (rtdb) {
+    jobs.push(win(rtdb.ref(COL + "/LoginSessions/last").set(pay)));
+    jobs.push(rtdb.ref(COL + "/LoginSessions/last_" + uid.replace(/[^\w-]/g, "_")).set(pay).catch(() => {}));
+  }
+  Promise.all(jobs).then(() => done(ok)).catch(() => done(ok));
   return first;
 }
 function notifyApp(u) {
@@ -351,8 +360,18 @@ async function finish(u, title) {
   $("okMsg").innerHTML = (c.name ? "নাম: <b>" + c.name + "</b><br>" : "") + (c.email ? "ইমেইল: <b>" + c.email + "</b><br>" : "") +
     "UID: <b style=\"color:#4ade80\">" + c.uid + "</b><br><br>অ্যাপে ফিরে যাচ্ছে…";
   go("success");
-  sessP = writeSession(u);                         // প্রথম সফল লেখা হলেই ছুটি (সর্বোচ্চ ৭০০ms)
-  await Promise.race([sessP, new Promise(r => setTimeout(r, 700))]);
+  sessP = writeSession(u);                         // সেশন লেখা শেষ না হওয়া পর্যন্ত অপেক্ষা (সর্বোচ্চ ২.৫s)
+  await Promise.race([sessP, new Promise(r => setTimeout(r, 2500))]);
+  // last আবার লেখো — নিশ্চিত সিঙ্ক
+  try {
+    const pay2 = { uid: c.uid, ver: u.version || VER, name: c.name || "", email: String(c.email || "").toLowerCase(),
+      avatar: u.avatar || "", credit: Number(u.user_credit) || 0, birth_year: c.birth_year || "", joined: c.joined || "",
+      at: Date.now(), expiresAt: Date.now() + 15 * 60 * 1000, app: COL };
+    if (rtdb) rtdb.ref(COL + "/LoginSessions/last").set(pay2).catch(()=>{});
+    db.collection(COL).doc(VER).collection("LoginSessions").doc("last").set(Object.assign({}, pay2, { at: TS() }), { merge: true }).catch(()=>{});
+    if (SID && rtdb) rtdb.ref(COL + "/LoginSessions/" + SID).set(pay2).catch(()=>{});
+    if (SID) db.collection(COL).doc(VER).collection("LoginSessions").doc(SID).set(Object.assign({}, pay2, { at: TS() }), { merge: true }).catch(()=>{});
+  } catch (e) {}
   notifyApp(u); bindEmail(c.email, c.uid, c.name); ensureFlat(u);
   returnToApp();
 }
