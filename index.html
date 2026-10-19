@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
 <title>KR Calculator A — Login</title>
+<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+<link rel="preconnect" href="https://apis.google.com" crossorigin>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -120,7 +123,7 @@
                 </button>
             </div>
 
-            <!-- YEAR / DATE (Google birth) -->
+            <!-- YEAR / DATE (শুধু নতুন ইউজার) -->
             <div id="birth" class="panel">
                 <p style="font-size:13px;color:var(--muted);text-align:center;margin-bottom:12px;line-height:1.55;">
                     Google অ্যাকাউন্টের জন্য জন্ম সাল <b>অথবা</b> পূর্ণ তারিখ দিন (যেকোনো একটি)। ৫ বছরের নিচে অনুমোদিত নয়।
@@ -180,15 +183,19 @@ firebase.initializeApp({
 const db = firebase.firestore(), auth = firebase.auth();
 let rtdb = null; try { rtdb = firebase.database(); } catch (e) {}
 
-/* শুধু এই কালেকশনে ইউজার ডক: COL/{UID}
-   ফিল্ড: uid, name, email, birth_year, birth_date, joined, avatar, app_permission
-   _session_* ডক তৈরি হয় না — একই ইমেইল বারবার লগইনেও নতুন সেশন নেই */
+/* ============================================================
+   নিয়ম (নিশ্চিত করা হয়েছে):
+   ১) প্রথমবার লগইন  → COL/{নতুন UID} ডকুমেন্ট তৈরি হবে, সব তথ্য সেখানে থাকবে।
+   ২) একই ইমেইলে আবার লগইন → Firestore-এ কিছুই লেখা হবে না:
+        • নতুন UID নেই, নতুন ডকুমেন্ট/সেকশন নেই
+        • আগের ডাটা আপডেট/রিসেট/ওভাররাইট নেই (নাম, ছবি, joined — সব অক্ষুণ্ণ)
+        • শুধু একটি দ্রুত READ করে প্রোফাইল নিয়ে অ্যাপে ফেরত
+   ============================================================ */
 const COL = "KR pro math master";
 const MIN_AGE = 5;
 const TS = () => firebase.firestore.FieldValue.serverTimestamp();
 const $ = id => document.getElementById(id);
 const q = new URLSearchParams(location.search);
-const SID = (v => /^[a-f0-9]{16,64}$/i.test(v || "") ? v : null)(q.get("sid"));
 
 /* ---------- UI ---------- */
 (function brand() {
@@ -209,10 +216,11 @@ function busy(btn, on, txt) {
   if (on) { btn.dataset.o = btn.innerHTML; btn.disabled = true; btn.textContent = txt || "..."; }
   else { btn.disabled = false; if (btn.dataset.o) btn.innerHTML = btn.dataset.o; }
 }
+function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
 
 const userRef = uid => db.collection(COL).doc(uid);
 
-/** ইউজার ডক থেকে প্রোফাইল — শুধু অনুমোদিত ফিল্ড */
+/** ইউজার ডক → প্রোফাইল অবজেক্ট (শুধু পড়া) */
 function packUser(uid, data) {
   data = data || {};
   return {
@@ -223,138 +231,109 @@ function packUser(uid, data) {
     birth_date: data.birth_date || "",
     joined: data.joined || "",
     avatar: data.avatar || null,
-    app_permission: data.app_permission !== false // এক পারমিশন — false না হলে true
+    app_permission: data.app_permission !== false
   };
-}
-
-/** ইমেইল দিয়ে একমাত্র ইউজার ডক খোঁজা (বাড়তি ম্যাপ ডক নেই) */
-async function findByEmail(email) {
-  email = String(email || "").toLowerCase().trim();
-  if (!email) return null;
-  try {
-    const snap = await db.collection(COL).where("email", "==", email).limit(5).get();
-    for (const d of snap.docs) {
-      const id = d.id;
-      // সিস্টেম/সেশন ডক স্কিপ
-      if (id.startsWith("_")) continue;
-      const data = d.data() || {};
-      if (data.blocked === true) continue;
-      return packUser(data.uid || id, data);
-    }
-  } catch (e) { console.error(e); }
-  return null;
-}
-
-async function findByUid(uid) {
-  if (!uid) return null;
-  try {
-    const s = await userRef(uid).get();
-    if (s.exists) {
-      const d = s.data() || {};
-      if (d.blocked === true) return null;
-      return packUser(uid, d);
-    }
-  } catch (e) {}
-  return null;
-}
-
-async function isBlocked(email) {
-  const em = String(email || "").toLowerCase().trim();
-  if (!em) return false;
-  try {
-    const snap = await db.collection(COL).where("email", "==", em).limit(5).get();
-    for (const d of snap.docs) {
-      if (d.id.startsWith("_")) continue;
-      if (d.data() && d.data().blocked === true) return true;
-    }
-  } catch (e) {}
-  return false;
-}
-
-/** নতুন UID — COL/{UID} খালি থাকলেই */
-async function newUid() {
-  for (let i = 0; i < 8; i++) {
-    const uid = "KR-" + Math.floor(1e7 + Math.random() * 9e7);
-    try {
-      const s = await userRef(uid).get();
-      if (!s.exists) return uid;
-    } catch (e) { return uid; }
-  }
-  return "KR-" + (Date.now() % 9e7 + 1e7);
 }
 
 /**
- * ইউজার ডক লেখা — শুধু অনুমোদিত ফিল্ড।
- * isNew: true হলে joined সেট; false হলে joined স্পর্শ করবে না (হাজারবার লগইনেও একই তারিখ)।
+ * ইমেইল দিয়ে ইউজার খোঁজা — মাত্র ১টি দ্রুত READ।
+ * আগে এই ডিভাইসে সেভ করা UID থাকলে সরাসরি ডক GET (query-র চেয়ে দ্রুত),
+ * মিলে গেলে সেটাই; না মিললে একটি email query।
+ * রিটার্ন: { profile, blocked } অথবা null (মানে একদম নতুন ইউজার)
  */
-async function saveUserProfile(p, isNew) {
-  const uid = p.uid;
-  if (!uid) throw new Error("no uid");
-  const doc = {
-    uid: uid,
-    name: p.name || "",
-    email: String(p.email || "").toLowerCase().trim(),
-    birth_year: p.birth_year || "",
-    birth_date: p.birth_date || "",
-    avatar: p.avatar || null,
-    app_permission: p.app_permission !== false
-  };
-  // অ্যাকাউন্ট তৈরির তারিখ শুধু নতুন বা খালি থাকলে
-  if (isNew || !p.joined) {
-    doc.joined = p.joined || new Date().toLocaleDateString("en-GB");
-    p.joined = doc.joined;
-  }
-  // এক পারমিশন — নতুন অ্যাকাউন্টে true; পুরনোতে merge দিয়ে থাকলে অক্ষুণ্ণ
-  if (isNew) {
-    doc.app_permission = true;
-    p.app_permission = true;
-  }
-  // set merge: joined না দিলে পুরনো মান অক্ষুণ্ণ
-  await userRef(uid).set(doc, { merge: true });
-  // joined আলাদা: শুধু ডকে না থাকলে একবার লিখ
-  if (p.joined) {
+async function lookupUser(email) {
+  email = String(email || "").toLowerCase().trim();
+  if (!email) return null;
+
+  // দ্রুত পথ: লোকাল UID দিয়ে সরাসরি GET
+  let cachedUid = null;
+  try { cachedUid = localStorage.getItem("kr_user_uid"); } catch (e) {}
+  if (cachedUid && /^KR-\d+$/.test(cachedUid)) {
     try {
-      const cur = await userRef(uid).get();
-      const existingJoined = cur.exists && cur.data() && cur.data().joined;
-      if (!existingJoined) {
-        await userRef(uid).set({ joined: p.joined }, { merge: true });
-      } else {
-        p.joined = existingJoined; // প্রোফাইলে আসল তারিখ রাখো
+      const s = await userRef(cachedUid).get();
+      if (s.exists) {
+        const d = s.data() || {};
+        if (String(d.email || "").toLowerCase().trim() === email) {
+          return { profile: packUser(cachedUid, d), blocked: d.blocked === true };
+        }
       }
     } catch (e) {}
   }
-  return p;
+
+  // সাধারণ পথ: ইমেইল query (একবারই; blocked চেকও এখান থেকেই)
+  const snap = await db.collection(COL).where("email", "==", email).limit(5).get();
+  for (const d of snap.docs) {
+    if (d.id.startsWith("_")) continue;
+    const data = d.data() || {};
+    return { profile: packUser(data.uid || d.id, data), blocked: data.blocked === true };
+  }
+  return null;
 }
 
-/* অ্যাপ হ্যান্ডঅফ — Firestore-এ কোনো _session_ ডক তৈরি হয় না
-   একই ইমেইল বারবার লগইন করলেও নতুন সেশন ডকুমেন্ট হবে না।
-   অ্যাপ localStorage + postMessage + BroadcastChannel দিয়ে লগইন ধরে। */
-function writeSession(p) {
-  const uid = String(p.uid);
-  const now = Date.now();
+/**
+ * শুধু নতুন ইউজারের জন্য: খালি UID নিয়ে ডক তৈরি — transaction, তাই
+ * কখনো অন্য কারও ডক ওভাররাইট হবে না। সব তথ্য একবারেই লেখা হয়।
+ */
+async function createUserDoc(info) {
+  for (let i = 0; i < 6; i++) {
+    const uid = "KR-" + Math.floor(1e7 + Math.random() * 9e7);
+    const ref = userRef(uid);
+    const joined = new Date().toLocaleDateString("en-GB");
+    const full = {
+      uid: uid,
+      name: info.name || "",
+      email: info.email,
+      birth_year: info.birth_year || "",
+      birth_date: info.birth_date || "",
+      joined: joined,
+      avatar: info.avatar || null,
+      app_permission: true,
+      provider: "google",
+      auth_uid: info.auth_uid || "",
+      email_verified: info.email_verified === true,
+      created_at: TS()
+    };
+    const created = await db.runTransaction(async tx => {
+      const s = await tx.get(ref);
+      if (s.exists) return false;
+      tx.set(ref, full);
+      return true;
+    });
+    if (created) {
+      return {
+        uid: uid, name: full.name, email: full.email,
+        birth_year: full.birth_year, birth_date: full.birth_date,
+        joined: joined, avatar: full.avatar, app_permission: true
+      };
+    }
+  }
+  throw new Error("uid-collision");
+}
+
+/* ---------- অ্যাপ হ্যান্ডঅফ (Firestore-এ কিছু লেখে না) ---------- */
+function handoff(p) {
+  const uid = String(p.uid), now = Date.now();
   const pay = {
-    uid: uid,
-    name: p.name || "",
-    email: String(p.email || "").toLowerCase(),
-    avatar: p.avatar || "",
-    birth_year: p.birth_year || "",
-    birth_date: p.birth_date || "",
-    joined: p.joined || "",
-    app_permission: p.app_permission !== false,
-    at: now,
-    expiresAt: now + 30 * 60 * 1000
+    uid: uid, name: p.name || "", email: String(p.email || "").toLowerCase(),
+    avatar: p.avatar || "", birth_year: p.birth_year || "", birth_date: p.birth_date || "",
+    joined: p.joined || "", app_permission: p.app_permission !== false,
+    at: now, expiresAt: now + 30 * 60 * 1000
   };
-  // শুধু localStorage — Firebase-এ সেশন ডক নেই
   try {
     localStorage.setItem("kr_login_session", JSON.stringify(pay));
     localStorage.setItem("kr_user_uid", uid);
+    localStorage.setItem("kr_cur_user", JSON.stringify({
+      user_profile: {
+        uid: uid, name: p.name, email: p.email, birth_year: p.birth_year,
+        birth_date: p.birth_date, joined: p.joined, app_permission: p.app_permission !== false
+      },
+      avatar: p.avatar
+    }));
   } catch (e) {}
-  // RTDB-তে একই পাথ overwrite (নতুন চাইল্ড নয়) — অ্যাপ চাইলে পড়তে পারে
-  const jobs = [];
-  if (rtdb) {
-    jobs.push(rtdb.ref(COL + "/LoginSessions/last").set(pay));
-  }
-  return Promise.all(jobs.map(j => Promise.resolve(j).catch(e => { console.error(e); return null; })));
+  // RTDB একই পাথ overwrite — ব্যাকগ্রাউন্ডে, অপেক্ষা ছাড়া
+  let job = Promise.resolve();
+  if (rtdb) { try { job = Promise.resolve(rtdb.ref(COL + "/LoginSessions/last").set(pay)).catch(() => null); } catch (e) {} }
+  return job;
 }
 
 function notifyApp(p) {
@@ -366,66 +345,55 @@ function notifyApp(p) {
 
 let CUR = null;
 function returnToApp() {
+  // অ্যাপ লিঙ্কে ?return=<অ্যাপ URL> দিলে লগইনের পর UID সহ সেখানে ফেরত যাবে
+  try {
+    const ret = q.get("return") || "";
+    if (CUR && CUR.uid && /^https?:\/\//i.test(ret)) {
+      const u = new URL(ret);
+      u.searchParams.set("uid", CUR.uid);
+      location.replace(u.toString());
+      return;
+    }
+  } catch (e) {}
   try { if (window.opener) { window.opener.focus(); window.close(); return; } } catch (e) {}
   try { if (history.length > 1) { history.back(); return; } } catch (e) {}
   try { window.close(); } catch (e) {}
   toast("অ্যাপে ফিরে যান — লগইন সেভ হয়েছে।", "info");
 }
 
+/** সফল লগইন — Firestore-এ কোনো লেখা নেই; শুধু লোকাল সেভ + অ্যাপকে জানানো */
 async function finish(p, title) {
   if (window._krFinishing) return;
   window._krFinishing = true;
-  try {
-    if (p.email) p.email = String(p.email).toLowerCase().trim();
-    // joined খালি হলে একবার
-    if (!p.joined || !String(p.joined).trim()) {
-      p.joined = new Date().toLocaleDateString("en-GB");
-    }
-    // ইউজার ডক আপডেট — isNew=false যাতে joined ওভাররাইট না হয় (saveUserProfile নিজে চেক করে)
-    await saveUserProfile(p, false);
-    CUR = p;
-    try {
-      const wrap = {
-        user_profile: {
-          uid: p.uid, name: p.name, email: p.email,
-          birth_year: p.birth_year, birth_date: p.birth_date, joined: p.joined,
-          app_permission: p.app_permission !== false
-        },
-        avatar: p.avatar
-      };
-      localStorage.setItem("kr_cur_user", JSON.stringify(wrap));
-      localStorage.setItem("kr_user_uid", p.uid);
-    } catch (e) {}
-    $("okTitle").textContent = title || "লগইন সফল!";
-    $("okMsg").innerHTML =
-      (p.name ? "নাম: <b>" + p.name + "</b><br>" : "") +
-      (p.email ? "ইমেইল: <b>" + p.email + "</b><br>" : "") +
-      "UID: <b style=\"color:#4ade80\">" + p.uid + "</b><br>" +
-      (p.birth_year ? "জন্ম সাল: <b>" + p.birth_year + "</b><br>" : "") +
-      (p.birth_date ? "জন্ম তারিখ: <b>" + p.birth_date + "</b><br>" : "") +
-      (p.joined ? "যোগদান: <b>" + p.joined + "</b><br>" : "") +
-      "<br>অ্যাপে ফিরে যাচ্ছে…";
-    go("success");
-    await Promise.race([writeSession(p), new Promise(r => setTimeout(r, 3000))]);
-    notifyApp(p);
-    returnToApp();
-  } catch (e) {
-    console.error(e);
-    toast("লগইন সেভ ব্যর্থ। আবার চেষ্টা করুন।", "err");
-  } finally {
-    setTimeout(function() { window._krFinishing = false; }, 2500);
-  }
+  CUR = p;
+  const rt = handoff(p);           // localStorage সঙ্গে সঙ্গে; RTDB পেছনে চলে
+  notifyApp(p);                    // অ্যাপকে তখনই জানাও
+  $("okTitle").textContent = title || "লগইন সফল!";
+  $("okMsg").innerHTML =
+    (p.name ? "নাম: <b>" + esc(p.name) + "</b><br>" : "") +
+    (p.email ? "ইমেইল: <b>" + esc(p.email) + "</b><br>" : "") +
+    "UID: <b style=\"color:#4ade80\">" + esc(p.uid) + "</b><br>" +
+    (p.birth_year ? "জন্ম সাল: <b>" + esc(p.birth_year) + "</b><br>" : "") +
+    (p.birth_date ? "জন্ম তারিখ: <b>" + esc(p.birth_date) + "</b><br>" : "") +
+    (p.joined ? "যোগদান: <b>" + esc(p.joined) + "</b><br>" : "") +
+    "<br>অ্যাপে ফিরে যাচ্ছে…";
+  go("success");
+  // RTDB লেখা শেষ হওয়ার জন্য সর্বোচ্চ ০.৪ সেকেন্ড, তারপর ফেরত
+  await Promise.race([rt, new Promise(r => setTimeout(r, 400))]);
+  returnToApp();
+  setTimeout(function () { window._krFinishing = false; }, 2500);
 }
 
 $("btnReturn").onclick = () => { if (CUR) notifyApp(CUR); returnToApp(); };
 
-/* ---------- জন্ম ---------- */
+/* ---------- জন্ম সাল/তারিখ (শুধু নতুন ইউজার) ---------- */
 const CY = new Date().getFullYear();
 let selYear = null, pend = null;
 const F = ["gDay", "gMonth", "gYear"];
 $("btnSwitchAcc").onclick = () => {
   CUR = null; window._krFinishing = false;
-  try { localStorage.removeItem("kr_cur_user"); } catch (e) {}
+  try { localStorage.removeItem("kr_cur_user"); localStorage.removeItem("kr_login_session"); } catch (e) {}
+  try { auth.signOut(); } catch (e) {}
   go("login");
 };
 (function () {
@@ -483,11 +451,12 @@ function resetBirth() {
 $("btnReset").onclick = resetBirth;
 $("btnCancel").onclick = () => { pend = null; go("login"); };
 
+/* নিশ্চিত করুন — শুধু নতুন ইউজারের ডক এখানে তৈরি হয় */
 $("btnConfirm").onclick = async () => {
   const s = state(); if (!pend || !s.valid) return;
   if (window._krConfirmBusy) return;
   window._krConfirmBusy = true;
-  const { email, name, photo, existing } = pend;
+  const info = pend;
   const btn = $("btnConfirm");
   if (s.age < MIN_AGE) {
     toast("৫ বছরের নিচে অ্যাকাউন্ট নয়।", "err");
@@ -495,41 +464,13 @@ $("btnConfirm").onclick = async () => {
   }
   busy(btn, true, "সেভ হচ্ছে…");
   try {
+    const p = await createUserDoc({
+      name: info.name, email: info.email, avatar: info.photo,
+      auth_uid: info.auth_uid, email_verified: info.email_verified,
+      birth_year: s.year, birth_date: s.date || ""
+    });
     pend = null;
-    if (existing && existing.uid) {
-      // পুরনো UID — নতুন ডক নয়
-      existing.birth_year = s.year;
-      if (s.date) existing.birth_date = s.date;
-      if (photo) existing.avatar = photo;
-      if (name) existing.name = name;
-      if (email) existing.email = email;
-      await saveUserProfile(existing, false);
-      await finish(existing, "Google লগইন সফল!");
-    } else {
-      // আবার ইমেইল চেক — রেসে ডুপ্লিকেট UID এড়ানো
-      let again = null;
-      try { again = await findByEmail(email); } catch (e) {}
-      if (again && again.uid) {
-        again.birth_year = s.year;
-        if (s.date) again.birth_date = s.date;
-        if (photo) again.avatar = photo;
-        if (name) again.name = name;
-        again.email = email;
-        await saveUserProfile(again, false);
-        await finish(again, "Google লগইন সফল!");
-      } else {
-        const uid = await newUid();
-        const p = {
-          uid, name, email,
-          birth_year: s.year,
-          birth_date: s.date || "",
-          joined: new Date().toLocaleDateString("en-GB"),
-          avatar: photo || null
-        };
-        await saveUserProfile(p, true);
-        await finish(p, "অ্যাকাউন্ট তৈরি হয়েছে!");
-      }
-    }
+    await finish(p, "অ্যাকাউন্ট তৈরি হয়েছে!");
   } catch (e) {
     console.error(e);
     toast("তৈরি ব্যর্থ। আবার চেষ্টা করুন।", "err");
@@ -544,40 +485,27 @@ $("btnConfirm").onclick = async () => {
 async function processGoogle(gu) {
   if (!gu) { toast("Google ব্যর্থ।", "err"); return; }
   const email = (gu.email || "").toLowerCase().trim();
-  const name = gu.displayName || (email ? email.split("@")[0] : "") || "ইউজার";
-  const photo = gu.photoURL || null;
   if (!email) { toast("ইমেইল পাওয়া যায়নি।", "err"); return; }
 
-  if (await isBlocked(email)) { toast("এই ইমেইল ব্লক।", "err"); return; }
+  let found = null;
+  try { found = await lookupUser(email); }
+  catch (e) { console.error(e); toast("নেটওয়ার্ক সমস্যা। আবার চেষ্টা করুন।", "err"); return; }
 
-  let existing = null;
-  try { existing = await findByEmail(email); } catch (e) {}
-  if (!existing) {
-    try { existing = await findByEmail(email); } catch (e) {}
+  if (found) {
+    if (found.blocked) { toast("এই ইমেইল ব্লক।", "err"); return; }
+    // পুরনো ইউজার: কোনো লেখা/আপডেট/নতুন ডক নেই — সরাসরি লগইন
+    await finish(found.profile, "Google লগইন সফল!");
+    return;
   }
 
-  if (existing && existing.uid) {
-    // এক ইমেইল = এক UID — নতুন ডক নয়
-    if (photo) existing.avatar = photo;
-    if (name) existing.name = name;
-    existing.email = email;
-    // নাম/ছবি আপডেট (joined অপরিবর্তিত)
-    try {
-      await userRef(existing.uid).set({
-        uid: existing.uid,
-        name: existing.name,
-        email: existing.email,
-        avatar: existing.avatar || null
-      }, { merge: true });
-    } catch (e) {}
-    if (existing.birth_year) {
-      await finish(existing, "Google লগইন সফল!");
-      return;
-    }
-    pend = { email, name, photo, existing };
-  } else {
-    pend = { email, name, photo, existing: null };
-  }
+  // একদম নতুন ইউজার — জন্ম সাল নিয়ে ডক তৈরি হবে
+  pend = {
+    email,
+    name: gu.displayName || email.split("@")[0] || "ইউজার",
+    photo: gu.photoURL || null,
+    auth_uid: gu.uid || "",
+    email_verified: gu.emailVerified === true
+  };
   resetBirth();
   go("birth");
   toast("জন্ম সাল নির্বাচন করুন", "info");
@@ -599,15 +527,14 @@ $("btnGoogle").onclick = async () => {
   busy(b, true, "Google খুলছে…");
   const pv = new firebase.auth.GoogleAuthProvider();
   pv.setCustomParameters({ prompt: "select_account" });
-  pv.addScope("profile");
-  pv.addScope("email");
   try {
     try {
       const r = await auth.signInWithPopup(pv);
+      busy(b, false);
       await processGoogle(r.user);
     } catch (e) {
       if (e.code === "auth/unauthorized-domain") throw e;
-      if (/popup|webview|blocked|cancelled/i.test((e.code || "") + (e.message || ""))) {
+      if (/popup|webview|blocked|cancelled/i.test((e.code || "") + (e.message || "")) && e.code !== "auth/popup-closed-by-user") {
         await auth.signInWithRedirect(pv);
         return;
       }
@@ -622,14 +549,15 @@ $("btnGoogle").onclick = async () => {
   }
 };
 
-document.addEventListener("DOMContentLoaded", async () => {
+/* রিডাইরেক্ট দিয়ে ফিরলে */
+(async () => {
   try {
     const r = await auth.getRedirectResult();
     if (r && r.user && !window._krFinishing) await processGoogle(r.user);
   } catch (e) {
     if (e.code && e.code !== "auth/null-user") toast(gErr(e), "err");
   }
-});
+})();
 </script>
 </body>
 </html>
