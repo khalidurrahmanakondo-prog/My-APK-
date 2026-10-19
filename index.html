@@ -146,6 +146,10 @@
                     </div>
                     <small class="help">উদাহরণ: দিন ০৫ · মাস ০৩ · বছর ২০০৮</small>
                 </div>
+                <div class="ib" style="margin-top:10px;">
+                    <label for="gAddress">ঠিকানা <span style="font-weight:400;color:var(--muted);">(ঐচ্ছিক)</span></label>
+                    <input type="text" id="gAddress" maxlength="240" autocomplete="street-address" placeholder="আপনার ঠিকানা">
+                </div>
                 <p style="font-size:12px;color:var(--muted);text-align:center;margin:8px 0;">— অথবা নিচ থেকে শুধু সাল বেছে নিন —</p>
                 <div class="year-grid" id="grid"></div>
                 <div class="selected-year" id="selTxt"></div>
@@ -233,6 +237,7 @@ function packUser(uid, data) {
     birth_year: data.birth_year || "",
     birth_date: data.birth_date || "",
     joined: data.joined || "",
+    address: data.address || "",
     avatar: data.avatar || null,
     app_permission: data.app_permission !== false
   };
@@ -289,6 +294,7 @@ async function createUserDoc(info) {
       birth_year: info.birth_year || "",
       birth_date: info.birth_date || "",
       joined: joined,
+      address: info.address || "",
       avatar: info.avatar || null,
       app_permission: true,
       provider: "google",
@@ -306,7 +312,7 @@ async function createUserDoc(info) {
       return {
         uid: uid, name: full.name, email: full.email,
         birth_year: full.birth_year, birth_date: full.birth_date,
-        joined: joined, avatar: full.avatar, app_permission: true
+        joined: joined, address: full.address, avatar: full.avatar, app_permission: true
       };
     }
   }
@@ -319,7 +325,7 @@ function handoff(p) {
   const pay = {
     uid: uid, name: p.name || "", email: String(p.email || "").toLowerCase(),
     avatar: p.avatar || "", birth_year: p.birth_year || "", birth_date: p.birth_date || "",
-    joined: p.joined || "", app_permission: p.app_permission !== false,
+    joined: p.joined || "", address: p.address || "", app_permission: p.app_permission !== false,
     at: now, expiresAt: now + 30 * 60 * 1000
   };
   try {
@@ -328,7 +334,8 @@ function handoff(p) {
     localStorage.setItem("kr_cur_user", JSON.stringify({
       user_profile: {
         uid: uid, name: p.name, email: p.email, birth_year: p.birth_year,
-        birth_date: p.birth_date, joined: p.joined, app_permission: p.app_permission !== false
+        birth_date: p.birth_date, joined: p.joined, address: p.address || "",
+        app_permission: p.app_permission !== false
       },
       avatar: p.avatar
     }));
@@ -379,6 +386,7 @@ async function finish(p, title) {
     (p.birth_year ? "জন্ম সাল: <b>" + esc(p.birth_year) + "</b><br>" : "") +
     (p.birth_date ? "জন্ম তারিখ: <b>" + esc(p.birth_date) + "</b><br>" : "") +
     (p.joined ? "যোগদান: <b>" + esc(p.joined) + "</b><br>" : "") +
+    (p.address ? "ঠিকানা: <b>" + esc(p.address) + "</b><br>" : "") +
     "<br>অ্যাপে ফিরে যাচ্ছে…";
   go("success");
   // RTDB লেখা শেষ হওয়ার জন্য সর্বোচ্চ ০.৪ সেকেন্ড, তারপর ফেরত
@@ -439,6 +447,7 @@ function refresh() {
 }
 function resetBirth() {
   selYear = null; F.forEach(i => { $(i).value = ""; $(i).disabled = false; });
+  $("gAddress").value = "";
   $("grid").querySelectorAll(".sel").forEach(x => x.classList.remove("sel")); refresh();
 }
 [["gDay", 31, 2], ["gMonth", 12, 2], ["gYear", CY, 4]].forEach(([id, max, len]) => {
@@ -468,7 +477,7 @@ $("btnConfirm").onclick = async () => {
   busy(btn, true, "সেভ হচ্ছে…");
   try {
     const p = await createUserDoc({
-      name: info.name, email: info.email, avatar: info.photo,
+      name: info.name, email: info.email, avatar: info.photo, address: $("gAddress").value.trim(),
       auth_uid: info.auth_uid, email_verified: info.email_verified,
       birth_year: s.year, birth_date: s.date || ""
     });
@@ -485,35 +494,92 @@ $("btnConfirm").onclick = async () => {
 };
 
 /* ---------- Google ---------- */
-async function processGoogle(gu) {
-  if (!gu) { toast("Google ব্যর্থ।", "err"); return; }
-  const email = (gu.email || "").toLowerCase().trim();
-  // Google অ্যাকাউন্টেই ইমেইল না থাকলে (খুব বিরল) — নতুন অ্যাকাউন্ট হিসেবে ধরা হয় না
-  if (!email) { toast("এই Google অ্যাকাউন্টে ইমেইল নেই। অন্য অ্যাকাউন্ট দিয়ে চেষ্টা করুন।", "err"); return; }
+function emailFromIdToken(token) {
+  try {
+    const part = String(token || "").split(".")[1];
+    if (!part) return "";
+    const b64 = part.replace(/-/g, "+").replace(/_/g, "/");
+    const json = atob(b64 + "=".repeat((4 - b64.length % 4) % 4));
+    const payload = JSON.parse(decodeURIComponent(Array.prototype.map.call(json, c => "%" + c.charCodeAt(0).toString(16).padStart(2, "0")).join("")));
+    return payload.email || "";
+  } catch (e) { return ""; }
+}
 
+async function resolveGoogleProfile(resultOrUser) {
+  const result = resultOrUser && resultOrUser.user ? resultOrUser : null;
+  const user = result ? result.user : resultOrUser;
+  if (!user) return null;
+  const profile = (result && result.additionalUserInfo && result.additionalUserInfo.profile) || {};
+  let credential = null;
+  try {
+    credential = (result && result.credential) ||
+      (result && firebase.auth.GoogleAuthProvider.credentialFromResult(result)) || null;
+  } catch (e) {}
+  const googleData = (user.providerData || []).find(x => x && x.providerId === "google.com") || {};
+  let email = user.email || googleData.email || profile.email || emailFromIdToken(credential && credential.idToken);
+  if (!email && credential && credential.accessToken) {
+    try {
+      const response = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+        headers: { Authorization: "Bearer " + credential.accessToken }
+      });
+      if (response.ok) {
+        const info = await response.json();
+        email = info.email || "";
+        profile.name = profile.name || info.name;
+        profile.picture = profile.picture || info.picture;
+        profile.email_verified = profile.email_verified || info.email_verified;
+      }
+    } catch (e) { console.warn("Google profile lookup failed", e); }
+  }
+  if (!email && typeof user.reload === "function") {
+    try { await user.reload(); email = user.email || ""; } catch (e) {}
+  }
+  email = String(email || "").toLowerCase().trim();
+  return {
+    email,
+    displayName: user.displayName || googleData.displayName || profile.name || "",
+    photoURL: user.photoURL || googleData.photoURL || profile.picture || "",
+    uid: user.uid || "",
+    emailVerified: user.emailVerified === true || profile.email_verified === true
+  };
+}
+
+async function processGoogle(resultOrUser) {
+  if (!resultOrUser) { toast("Google সাইন-ইন সম্পন্ন হয়নি। আবার চেষ্টা করুন।", "err"); return; }
+  const gu = await resolveGoogleProfile(resultOrUser);
+  const email = String((gu && gu.email) || "").toLowerCase().trim();
+  if (!email) {
+    toast("Google থেকে ইমেইল পাওয়া যায়নি। Google অনুমতি (email) দিয়ে আবার সাইন-ইন করুন।", "err");
+    console.error("Google sign-in result did not contain an email address.");
+    return;
+  }
+
+  // আগে একই email-এর account খুঁজি; না থাকলে lookupUser null ফেরায় এবং নতুন account flow-তে যায়।
   let found = null;
   try { found = await lookupUser(email); }
-  catch (e) { console.error(e); toast("নেটওয়ার্ক সমস্যা। আবার চেষ্টা করুন।", "err"); return; }
+  catch (e) {
+    console.error("Account lookup failed", e);
+    toast("অ্যাকাউন্ট যাচাই করা যায়নি। ইন্টারনেট ও Firebase সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।", "err");
+    return;
+  }
 
   if (found) {
-    if (found.blocked) { toast("এই ইমেইল ব্লক।", "err"); return; }
-    // পুরনো ইউজার: কোনো লেখা/আপডেট/নতুন ডক নেই — সরাসরি লগইন
+    if (found.blocked) { toast("এই ইমেইল ব্লক করা হয়েছে।", "err"); return; }
     await finish(found.profile, "Google লগইন সফল!");
     return;
   }
 
-  // নতুন ইমেইল = নতুন অ্যাকাউন্ট। ইউজারকে “ইমেইল পাওয়া যায়নি” বলা হয় না।
-  // সরাসরি জন্ম সাল/তারিখ নির্বাচন স্ক্রিনে নিয়ে যাওয়া হয়।
+  // Firestore-এ email না থাকলে সেটিকে নতুন account হিসেবে birth/details ধাপে পাঠাই।
   pend = {
     email,
-    name: gu.displayName || email.split("@")[0] || "ইউজার",
-    photo: gu.photoURL || null,
-    auth_uid: gu.uid || "",
-    email_verified: gu.emailVerified === true
+    name: (gu && gu.displayName) || email.split("@")[0] || "ইউজার",
+    photo: (gu && gu.photoURL) || null,
+    auth_uid: (gu && gu.uid) || "",
+    email_verified: !!(gu && gu.emailVerified)
   };
   resetBirth();
   go("birth");
-  toast("নতুন অ্যাকাউন্ট — জন্ম সাল নির্বাচন করুন", "info");
+  toast("এই ইমেইলে অ্যাকাউন্ট নেই — নতুন অ্যাকাউন্ট তৈরি করুন।", "info");
 }
 
 function gErr(e) {
@@ -532,6 +598,7 @@ $("btnGoogle").onclick = async () => {
   busy(b, true, "Google খুলছে…");
   const pv = new firebase.auth.GoogleAuthProvider();
   // নাম, ইমেইল, প্রোফাইল ছবি ও অন্যান্য বেসিক প্রোফাইল তথ্যের অনুমতি চাওয়া
+  pv.addScope("openid");
   pv.addScope("profile");
   pv.addScope("email");
   pv.addScope("https://www.googleapis.com/auth/userinfo.profile");
@@ -542,7 +609,7 @@ $("btnGoogle").onclick = async () => {
     try {
       const r = await auth.signInWithPopup(pv);
       busy(b, false);
-      await processGoogle(r.user);
+      await processGoogle(r);
     } catch (e) {
       if (e.code === "auth/unauthorized-domain") throw e;
       if (/popup|webview|blocked|cancelled/i.test((e.code || "") + (e.message || "")) && e.code !== "auth/popup-closed-by-user") {
@@ -564,7 +631,7 @@ $("btnGoogle").onclick = async () => {
 (async () => {
   try {
     const r = await auth.getRedirectResult();
-    if (r && r.user && !window._krFinishing) await processGoogle(r.user);
+    if (r && r.user && !window._krFinishing) await processGoogle(r);
   } catch (e) {
     if (e.code && e.code !== "auth/null-user") toast(gErr(e), "err");
   }
