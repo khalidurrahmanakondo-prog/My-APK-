@@ -200,6 +200,7 @@ let rtdb = null; try { rtdb = firebase.database(); } catch (e) {}
    ============================================================ */
 const COL = "KR pro math master";
 const MIN_AGE = 5;
+const NEW_USER_CREDITS = 5;
 const TS = () => firebase.firestore.FieldValue.serverTimestamp();
 const $ = id => document.getElementById(id);
 const q = new URLSearchParams(location.search);
@@ -239,6 +240,7 @@ function packUser(uid, data) {
     joined: data.joined || "",
     address: data.address || "",
     avatar: data.avatar || null,
+    credit: Number(data.credit != null ? data.credit : (data.user_credit || 0)) || 0,
     app_permission: data.app_permission !== false
   };
 }
@@ -296,6 +298,7 @@ async function createUserDoc(info) {
       joined: joined,
       address: info.address || "",
       avatar: info.avatar || null,
+      credit: Number(info.credit != null ? info.credit : NEW_USER_CREDITS),
       app_permission: true,
       provider: "google",
       auth_uid: info.auth_uid || "",
@@ -312,7 +315,8 @@ async function createUserDoc(info) {
       return {
         uid: uid, name: full.name, email: full.email,
         birth_year: full.birth_year, birth_date: full.birth_date,
-        joined: joined, address: full.address, avatar: full.avatar, app_permission: true
+        joined: joined, address: full.address, avatar: full.avatar,
+        credit: full.credit, app_permission: true
       };
     }
   }
@@ -325,8 +329,8 @@ function handoff(p) {
   const pay = {
     uid: uid, name: p.name || "", email: String(p.email || "").toLowerCase(),
     avatar: p.avatar || "", birth_year: p.birth_year || "", birth_date: p.birth_date || "",
-    joined: p.joined || "", address: p.address || "", app_permission: p.app_permission !== false,
-    at: now, expiresAt: now + 30 * 60 * 1000
+    joined: p.joined || "", address: p.address || "", credit: Number(p.credit || 0),
+    app_permission: p.app_permission !== false, at: now, expiresAt: now + 30 * 60 * 1000
   };
   try {
     localStorage.setItem("kr_login_session", JSON.stringify(pay));
@@ -337,6 +341,7 @@ function handoff(p) {
         birth_date: p.birth_date, joined: p.joined, address: p.address || "",
         app_permission: p.app_permission !== false
       },
+      user_credit: Number(p.credit || 0),
       avatar: p.avatar
     }));
   } catch (e) {}
@@ -387,6 +392,7 @@ async function finish(p, title) {
     (p.birth_date ? "জন্ম তারিখ: <b>" + esc(p.birth_date) + "</b><br>" : "") +
     (p.joined ? "যোগদান: <b>" + esc(p.joined) + "</b><br>" : "") +
     (p.address ? "ঠিকানা: <b>" + esc(p.address) + "</b><br>" : "") +
+    (p.credit != null ? "ক্রেডিট: <b>" + esc(p.credit) + "</b><br>" : "") +
     "<br>অ্যাপে ফিরে যাচ্ছে…";
   go("success");
   // RTDB লেখা শেষ হওয়ার জন্য সর্বোচ্চ ০.৪ সেকেন্ড, তারপর ফেরত
@@ -549,7 +555,7 @@ async function processGoogle(resultOrUser) {
   const gu = await resolveGoogleProfile(resultOrUser);
   const email = String((gu && gu.email) || "").toLowerCase().trim();
   if (!email) {
-    toast("Google থেকে ইমেইল পাওয়া যায়নি। Google অনুমতি (email) দিয়ে আবার সাইন-ইন করুন।", "err");
+    toast("Google সাইন-ইন তথ্য যাচাই করা যায়নি। Google অনুমতি দিয়ে আবার সাইন-ইন করুন।", "err");
     console.error("Google sign-in result did not contain an email address.");
     return;
   }
@@ -569,17 +575,29 @@ async function processGoogle(resultOrUser) {
     return;
   }
 
-  // Firestore-এ email না থাকলে সেটিকে নতুন account হিসেবে birth/details ধাপে পাঠাই।
-  pend = {
-    email,
-    name: (gu && gu.displayName) || email.split("@")[0] || "ইউজার",
-    photo: (gu && gu.photoURL) || null,
-    auth_uid: (gu && gu.uid) || "",
-    email_verified: !!(gu && gu.emailVerified)
-  };
-  resetBirth();
-  go("birth");
-  toast("এই ইমেইলে অ্যাকাউন্ট নেই — নতুন অ্যাকাউন্ট তৈরি করুন।", "info");
+  // এই email-এর app profile না থাকলে Google পরিচয় থেকে সঙ্গে সঙ্গে নতুন account তৈরি করি।
+  // জন্মতারিখ/ঠিকানা Google basic profile-এ আসে না; সেগুলো অনুপস্থিত থাকলে ফাঁকা রাখা হয়,
+  // কিন্তু email, UID, নাম, avatar, joined ও প্রাথমিক credit এখনই সংরক্ষিত হবে।
+  try {
+    const created = await createUserDoc({
+      email,
+      name: (gu && gu.displayName) || email.split("@")[0] || "ইউজার",
+      avatar: (gu && gu.photoURL) || null,
+      address: "",
+      credit: NEW_USER_CREDITS,
+      auth_uid: (gu && gu.uid) || "",
+      email_verified: !!(gu && gu.emailVerified),
+      birth_year: "",
+      birth_date: ""
+    });
+    await finish(created, "নতুন অ্যাকাউন্ট তৈরি ও লগইন সফল!");
+  } catch (e) {
+    console.error("New Firebase account creation failed", e);
+    const msg = e && (e.code === "permission-denied" || e.code === "firestore/permission-denied")
+      ? "Firebase অনুমতি না থাকায় অ্যাকাউন্ট সংরক্ষণ হয়নি। Firestore rules পরীক্ষা করুন।"
+      : "নতুন অ্যাকাউন্ট তৈরি করা যায়নি। নেটওয়ার্ক/Firebase পরীক্ষা করে আবার চেষ্টা করুন।";
+    toast(msg, "err");
+  }
 }
 
 function gErr(e) {
