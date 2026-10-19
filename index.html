@@ -23,8 +23,8 @@
             font-family: 'Hind Siliguri','Plus Jakarta Sans',-apple-system,sans-serif;
             min-height:100vh; background-color:#071108;
             background-image:url('https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?q=80&w=1920&auto=format&fit=crop');
-            background-size:cover; background-position:center; background-attachment:fixed;
-            color:var(--text); overflow-x:hidden;
+            background-size:cover; background-position:center; background-attachment:scroll;
+            color:var(--text); overflow-x:hidden; overflow-y:auto; overscroll-behavior:none; -webkit-overflow-scrolling:touch;
         }
         body::before { content:''; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:0; pointer-events:none; }
         .wrap { position:relative; z-index:10; width:100%; max-width:440px; margin:0 auto; padding:24px 20px 50px; display:flex; flex-direction:column; align-items:center; }
@@ -70,19 +70,32 @@
         .foot a { color:var(--green); text-decoration:none; font-weight:700; cursor:pointer; }
         .token-box { font-size:24px; font-weight:800; color:var(--green); letter-spacing:3px; margin:12px 0; background:rgba(0,0,0,0.3); padding:12px; border-radius:10px; border:1px dashed var(--green); word-break:break-all; text-align:center; }
         .toast-wrap { position:fixed; top:16px; right:12px; z-index:9999; display:flex; flex-direction:column; gap:8px; max-width:min(300px,calc(100vw - 24px)); pointer-events:none; }
-        .toast { pointer-events:auto; background:rgba(39,205,120,0.95); color:#fff; border-radius:10px; padding:10px 12px; font-size:13px; font-weight:600; box-shadow:0 4px 14px rgba(0,0,0,0.3); animation:slideIn 0.35s ease forwards; border:1px solid rgba(255,255,255,0.2); }
+        .toast { pointer-events:auto; background:rgba(39,205,120,0.95); color:#fff; border-radius:10px; padding:10px 12px; font-size:13px; font-weight:600; box-shadow:0 4px 14px rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.2); opacity:1; }
         .toast.err { background:rgba(255,75,75,0.95); }
         .toast.info { background:rgba(59,130,246,0.95); }
-        @keyframes slideIn { from { transform:translateX(110%); opacity:0; } to { transform:translateX(0); opacity:1; } }
         .success-box { text-align:center; padding:12px 0; }
         .success-box .big-icon { font-size:3rem; margin-bottom:10px; }
         .success-box h3 { color:var(--green); font-size:1.2rem; margin-bottom:8px; }
         .success-box p { color:var(--muted); font-size:13px; line-height:1.5; margin-bottom:16px; white-space:pre-line; }
         .back-app { display:inline-flex; align-items:center; gap:6px; color:#FF00FF; border:1.5px solid #FF00FF; padding:6px 14px; border-radius:50px; font-size:0.85rem; font-weight:bold; background:transparent; cursor:pointer; margin-bottom:16px; align-self:flex-start; text-decoration:none; }
-        .year-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; max-height:220px; overflow-y:auto; padding:8px 0; }
-        .year-btn { padding:10px 4px; border-radius:10px; border:1px solid var(--border); background:rgba(5,12,8,0.55); color:#fff; font-weight:700; font-size:14px; cursor:pointer; }
+        .year-grid {
+            display:grid; grid-template-columns:repeat(4,1fr); gap:8px; max-height:220px;
+            overflow-y:auto; overflow-x:hidden; padding:8px 0;
+            overscroll-behavior:contain; -webkit-overflow-scrolling:touch;
+            scrollbar-width:none; -ms-overflow-style:none;
+            touch-action:pan-y;
+        }
+        .year-grid::-webkit-scrollbar { display:none; width:0; height:0; }
+        .year-btn {
+            padding:10px 4px; border-radius:10px; border:1px solid var(--border);
+            background:rgba(5,12,8,0.55); color:#fff; font-weight:700; font-size:14px; cursor:pointer;
+            transform:none !important; transition:none !important;
+            -webkit-tap-highlight-color:transparent;
+        }
         .year-btn.sel { background:linear-gradient(135deg,var(--green-dark),var(--green)); border-color:var(--green); }
-        .year-btn:active { transform:scale(0.95); }
+        .year-btn:active { transform:none !important; opacity:0.9; }
+        .btn:active { transform:none !important; opacity:0.9; }
+        * { scroll-behavior:auto !important; }
         .selected-year { text-align:center; color:var(--green); font-weight:700; margin-top:6px; font-size:14px; }
     </style>
 </head>
@@ -97,43 +110,44 @@
             </div>
             <h1 class="btitle" id="sharedAppName" style="display:none;"></h1>
             <h2 class="bsub" id="heading">লগইন / সাইন ইন</h2>
-            <p class="bdesc" id="desc">ইমেইল+পাসওয়ার্ড, UID+পাসওয়ার্ড, অথবা Google।</p>
+            <p class="bdesc" id="desc">শুধু Google অ্যাকাউন্ট দিয়ে নিরাপদ লগইন।</p>
         </div>
 
         <div class="card">
-            <!-- LOGIN -->
+<!-- LOGIN — শুধু Google -->
             <div id="login" class="panel on">
-                <form id="loginForm">
-                    <div class="ib">
-                        <label>ইমেইল অথবা ইউআইডি (UID)</label>
-                        <div class="iw">
-                            <i class="fa-regular fa-user"></i>
-                            <input type="text" id="lInput" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="email@domain.com বা ৮ সংখ্যার UID" required>
-                        </div>
-                    </div>
-                    <div class="ib">
-                        <label>পাসওয়ার্ড <span style="font-weight:400;color:#94a3b8;">(সেট থাকলে আবশ্যক)</span></label>
-                        <div class="iw">
-                            <i class="fa-solid fa-lock"></i>
-                            <input type="password" id="lPass" class="has-eye" autocomplete="current-password" placeholder="কমপক্ষে ৬ অক্ষর (ইংরেজি)" minlength="6" pattern="[^\s\u0980-\u09FF]*" inputmode="latin">
-                            <button type="button" class="eye-btn" data-for="lPass"><i class="fa-regular fa-eye"></i></button>
-                        </div>
-                        <small class="help">পাসওয়ার্ড: কমপক্ষে ৬ অক্ষর, স্পেস/বাংলা নয়। সেট না থাকলে খালি রেখে লগইন (ইমেইল থাকলে কোড যাবে)।</small>
-                    </div>
-                    <button type="submit" id="loginBtn" class="btn">লগইন করুন <i class="fa-solid fa-arrow-right-long"></i></button>
-                </form>
-                <div class="divider">অথবা</div>
-                <button type="button" id="btnGoogleLogin" class="btn google">
-                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt=""> Google দিয়ে চালিয়ে যান
-                </button>
-                <div class="foot">
-                    <p>নতুন অ্যাকাউন্ট? <a id="btnGoReg">রেজিস্ট্রেশন করুন</a></p>
-                    <p style="margin-top:8px;"><a id="btnGoForgot">Forget Password / পাসওয়ার্ড ভুলে গেছেন?</a></p>
+                <div style="text-align:center;margin-bottom:18px;padding:4px 2px;">
+                    <p style="font-size:15px;font-weight:700;color:#fff;line-height:1.55;margin-bottom:10px;">🌟 আপনার দুর্দান্ত ডিজিটাল যাত্রা শুরু হোক এখনই! 🚀</p>
+                    <p style="font-size:13px;color:var(--muted);line-height:1.7;text-align:left;">
+                        🔒 আপনার সর্বোচ্চ নিরাপত্তা ও নির্বিঘ্ন অভিজ্ঞতা নিশ্চিত করতে আমরা ব্যবহার করছি বিশ্বের সবচেয়ে সেরা <b style="color:#4ade80;">Google সিকিউরিটি সিস্টেম</b>। 🔑 কোনো জটিল পাসওয়ার্ড মনে রাখার ঝামেলা ছাড়াই মাত্র ১-ক্লিকে আমাদের সাথে যুক্ত হোন! ✨<br><br>
+
+                        <b style="color:#38bdf8;">🎁 লগইন করার অসাধারণ সব সুবিধাসমূহ:</b><br>
+                        • ☁️ <b>স্বয়ংক্রিয় ক্লাউড ব্যাকআপ:</b> আপনার কাজের সকল প্রোগ্রেস ও ডেটা থাকবে আজীবন নিরাপদ।<br>
+                        • 📲 <b>মাল্টি-ডিভাইস এক্সেস:</b> ফোন, ট্যাব বা ল্যাপটপ—যেকোনো ডিভাইস থেকে নিজের প্রোফাইলে ঢুকুন।<br>
+                        • ⚡ <b>সুপারফাস্ট সাইন-ইন:</b> কোনো ফর্ম পূরণ না করেই মাত্র এক ক্লিকে নিমেষেই অ্যাপে প্রবেশ।<br>
+                        • 👑 <b>এক্সক্লুসিভ ফিচার ও অফার:</b> আমাদের মেম্বার হয়ে বিশেষ সব আপডেট ও প্রিমিয়াম সুবিধা উপভোগ করুন।<br><br>
+
+                        <b style="color:#f87171;">⚠️ সাইন-ইন না করলে যেসব বড় ক্ষতি বা অসুবিধা হবে:</b><br>
+                        • 🚫 <b>সীমিত ব্যবহার:</b> অনেক জরুরি ও দরকারি ফিচার ব্যবহারে বাধা তৈরি হবে।<br>
+                        • ❓ <b>কোনো প্রোফাইল আইডেন্টিটি থাকবে না:</b> আপনার ইউনিক আইডি না থাকায় যেকোনো সমস্যায় সাপোর্ট পাওয়া কঠিন হবে।
+                    </p>
                 </div>
+
+                <button type="button" id="btnGoogleLogin" class="btn google">
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt=""> Google দিয়ে লগইন / অ্যাকাউন্ট
+                </button>
+                <form id="loginForm" style="display:none!important;" aria-hidden="true">
+                    <input type="text" id="lInput"><input type="password" id="lPass">
+                    <button type="submit" id="loginBtn"></button>
+                </form>
+                <button type="button" id="btnGoogleReg" style="display:none!important;"></button>
+                <a id="btnGoReg" style="display:none"></a>
+                <a id="btnGoForgot" style="display:none"></a>
+                <a id="btnGoLogin" style="display:none"></a>
             </div>
 
             <!-- REGISTER -->
-            <div id="reg" class="panel">
+            <div id="reg" class="panel" style="display:none!important">
                 <form id="regForm">
                     <div class="ib">
                         <label>সম্পূর্ণ নাম</label>
@@ -184,19 +198,39 @@
                 <div class="foot"><p>অ্যাকাউন্ট আছে? <a id="btnGoLogin">লগইন করুন</a></p></div>
             </div>
 
-            <!-- YEAR (Google birth year if needed) -->
+            <!-- YEAR / DATE (Google birth) -->
             <div id="birthYear" class="panel">
-                <p style="font-size:13px;color:var(--muted);text-align:center;margin-bottom:12px;line-height:1.5;">
-                    Google অ্যাকাউন্টের জন্য জন্ম সাল নির্বাচন করুন (৫ বছরের নিচে অনুমোদিত নয়)।
+                <p style="font-size:13px;color:var(--muted);text-align:center;margin-bottom:12px;line-height:1.55;">
+                    Google অ্যাকাউন্টের জন্য জন্ম সাল <b>অথবা</b> পূর্ণ তারিখ দিন। ৫ বছরের নিচে অনুমোদিত নয়।
                 </p>
+                <div class="ib" style="margin-bottom:10px;">
+                    <label>জন্ম তারিখ লিখুন (ঐচ্ছিক)</label>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <div style="flex:1;text-align:center;">
+                            <small class="help" style="margin:0 0 4px;display:block;">দিন</small>
+                            <input type="number" id="gDay" min="1" max="31" placeholder="DD" style="padding-left:12px;text-align:center;">
+                        </div>
+                        <div style="flex:1;text-align:center;">
+                            <small class="help" style="margin:0 0 4px;display:block;">মাস</small>
+                            <input type="number" id="gMonth" min="1" max="12" placeholder="MM" style="padding-left:12px;text-align:center;">
+                        </div>
+                        <div style="flex:1.2;text-align:center;">
+                            <small class="help" style="margin:0 0 4px;display:block;">বছর</small>
+                            <input type="number" id="gYearInp" min="1920" max="2099" placeholder="YYYY" style="padding-left:12px;text-align:center;">
+                        </div>
+                    </div>
+                    <small class="help">উদাহরণ: দিন ০৫ · মাস ০৩ · বছর ২০০৮</small>
+                </div>
+                <p style="font-size:12px;color:var(--muted);text-align:center;margin:8px 0;">— অথবা নিচ থেকে শুধু সাল বেছে নিন —</p>
                 <div class="year-grid" id="gYearGrid"></div>
                 <div class="selected-year" id="gYearSelectedText"></div>
+                <div id="gAgeDisplay" style="text-align:center;font-size:15px;font-weight:700;color:#4ade80;margin:8px 0;min-height:1.4em;"></div>
                 <button type="button" id="btnConfirmGYear" class="btn" disabled>নিশ্চিত করুন</button>
                 <button type="button" class="btn sec" id="btnCancelGYear">বাতিল</button>
             </div>
 
             <!-- VERIFY -->
-            <div id="verify" class="panel">
+            <div id="verify" class="panel" style="display:none!important">
                 <div style="text-align:center;padding:4px 0 8px;">
                     <p style="font-size:13px;color:var(--muted);">ইমেইল: <strong id="vEmailDisplay" style="color:var(--green);">---</strong></p>
                     <p style="font-size:13px;color:var(--muted);margin-top:8px;">টোকেন আইডি:</p>
@@ -216,7 +250,7 @@
             </div>
 
             <!-- FORGOT -->
-            <div id="forgot" class="panel">
+            <div id="forgot" class="panel" style="display:none!important">
                 <p style="font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:14px;text-align:center;">
                     ইমেইল বা UID দিন। অ্যাকাউন্ট থাকলেই কোড যাবে।
                 </p>
@@ -334,7 +368,7 @@ function goPanel(id) {
     document.querySelectorAll(".panel").forEach(p => p.classList.remove("on"));
     const t = document.getElementById(id); if (t) t.classList.add("on");
     const map = {
-        login: ["লগইন / সাইন ইন", "ইমেইল+পাসওয়ার্ড, UID+পাসওয়ার্ড, বা Google।"],
+        login: ["লগইন / সাইন ইন", "শুধু Google অ্যাকাউন্ট দিয়ে নিরাপদ লগইন।"],
         reg: ["নতুন অ্যাকাউন্ট", "নাম, ইমেইল, জন্ম সাল ও UID।"],
         verify: ["ভেরিফিকেশন", "৫ মিনিটের মধ্যে কোড দিন।"],
         forgot: ["পাসওয়ার্ড পুনরুদ্ধার", "অ্যাকাউন্ট থাকলেই কোড যাবে।"],
@@ -776,6 +810,7 @@ buildYearGrid("gYearGrid", (y) => {
     gSelectedYear = y;
     document.getElementById("gYearSelectedText").textContent = "নির্বাচিত: " + y;
     document.getElementById("btnConfirmGYear").disabled = false;
+    try { if (typeof updateGAgeDisplay === "function") updateGAgeDisplay(); } catch(e){}
 });
 
 document.getElementById("btnPickYear").addEventListener("click", () => {
@@ -1022,10 +1057,10 @@ async function processGoogleUser(gUser) {
             if (mappedUid) existing = await findUserByEmailOrUid(mappedUid);
         } catch (e) {}
     }
-    if (existing && existing.user_profile?.uid) {
+    // পুরনো অ্যাকাউন্ট (ইমেইল/UID পাওয়া গেছে) → জন্মসাল জিজ্ঞাসা নয়, সরাসরি লগইন
+    if (existing && existing.user_profile && existing.user_profile.uid) {
         if (!(await checkPermission(existing))) { toast("অনুমতি নেই।", "err"); return; }
         if (photo && !existing.avatar) existing.avatar = photo;
-        // ইমেইল প্রোফাইলে না থাকলে Google ইমেইল সেট করো
         if (email && (!existing.user_profile.email || !String(existing.user_profile.email).includes("@"))) {
             existing.user_profile.email = email;
         }
@@ -1033,12 +1068,20 @@ async function processGoogleUser(gUser) {
         finishLogin(existing, "Google লগইন সফল!");
         return;
     }
-    // নতুন — জন্ম সাল লাগবে
+    // শুধু নতুন ইমেইল → জন্মসাল/তারিখ জিজ্ঞাসা
     pendingGoogle = { email, name, photo };
     gSelectedYear = null;
-    document.getElementById("gYearSelectedText").textContent = "";
-    document.getElementById("btnConfirmGYear").disabled = true;
-    document.getElementById("gYearGrid").querySelectorAll(".year-btn").forEach(x => x.classList.remove("sel"));
+    try {
+        document.getElementById("gYearSelectedText").textContent = "";
+        document.getElementById("btnConfirmGYear").disabled = true;
+        document.getElementById("gYearGrid").querySelectorAll(".year-btn").forEach(x => x.classList.remove("sel"));
+        const ageEl = document.getElementById("gAgeDisplay");
+        if (ageEl) ageEl.textContent = "";
+        ["gDay","gMonth","gYearInp"].forEach(function(id) {
+            const el = document.getElementById(id);
+            if (el) el.value = "";
+        });
+    } catch (e) {}
     goPanel("birthYear");
 }
 
@@ -1157,17 +1200,42 @@ async function handleGoogleRedirectResult() {
     return false;
 }
 
+function updateGAgeDisplay() {
+    const ageEl = document.getElementById("gAgeDisplay");
+    if (!ageEl) return;
+    let y = gSelectedYear;
+    const yi = document.getElementById("gYearInp");
+    if (yi && yi.value) y = Number(yi.value);
+    if (!y) { ageEl.textContent = ""; return; }
+    const age = ageFromYear(y);
+    if (age < 0) { ageEl.textContent = ""; return; }
+    ageEl.textContent = "আপনার বয়স: প্রায় " + age + " বছর";
+    if (age < MIN_AGE) ageEl.style.color = "#ef4444";
+    else ageEl.style.color = "#4ade80";
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
     // আগে Google redirect রেজাল্ট চেক
     const fromGoogle = await handleGoogleRedirectResult();
     if (fromGoogle) return;
 
-    const cur = PortalStorage.cur();
-    if (cur && cur.user_profile?.uid) {
-        document.getElementById("successTitle").textContent = "ইতিমধ্যে লগইন আছেন";
-        document.getElementById("successMsg").textContent = "UID: " + cur.user_profile.uid;
-        goPanel("success");
-    }
+    // লিংক ক্লিক = সবসময় নতুন লগইন চাওয়া — “ইতিমধ্যে লগইন” দেখাবে না
+    try { PortalStorage.setCur(null); } catch (e) {}
+    goPanel("login");
+
+    ["gDay", "gMonth", "gYearInp"].forEach(function(id) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener("input", function() {
+            const y = Number(document.getElementById("gYearInp").value);
+            if (y >= 1920 && y <= new Date().getFullYear()) {
+                gSelectedYear = y;
+                document.getElementById("gYearSelectedText").textContent = "নির্বাচিত: " + y;
+                document.getElementById("btnConfirmGYear").disabled = false;
+            }
+            updateGAgeDisplay();
+        });
+    });
 });
 </script>
 </body>
