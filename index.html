@@ -389,11 +389,10 @@ function maskEmail(email) {
 }
 async function returnToApp() {
     const cur = PortalStorage.cur();
-    // সেশন দ্রুত লেখো (সর্বোচ্চ ১.২ সেকেন্ড অপেক্ষা)
-    try { await Promise.race([writeLoginSession(cur), new Promise(r => setTimeout(r, 1200))]); } catch(e){}
+    // সেশন দ্রুত লেখো (সর্বোচ্চ ৫০০ms)
+    try { await Promise.race([writeLoginSession(cur), new Promise(r => setTimeout(r, 500))]); } catch(e){}
     try { notifyApp(cur); } catch(e){}
     try { if (window.opener) { window.opener.focus(); window.close(); return; } } catch(e){}
-    // WebView: আগের ক্যালকুলেটর পেজে ফিরে যাও
     try {
         if (history.length > 1) { history.back(); return; }
     } catch(e){}
@@ -756,10 +755,11 @@ async function finishLogin(userData, title) {
         (emailShow ? ("ইমেইল: <b>" + emailShow + "</b><br>") : "") +
         "UID: <b style=\"color:#4ade80\">" + uidShow + "</b><br><br>অ্যাপে ফিরে যাচ্ছে…";
     goPanel("success");
-    try { await Promise.race([writeLoginSession(userData), new Promise(r => setTimeout(r, 800))]); } catch(e){}
+    // দ্রুত সেশন লেখো (সর্বোচ্চ ৪০০ms) — অ্যাপে তাড়াতাড়ি সিঙ্ক
+    try { await Promise.race([writeLoginSession(userData), new Promise(r => setTimeout(r, 400))]); } catch(e){}
     try { notifyApp(userData); } catch(e){}
     toast("সফল! অ্যাপে ফিরে যাচ্ছে…", "ok");
-    setTimeout(function() { try { returnToApp(); } catch(e){} }, 400);
+    setTimeout(function() { try { returnToApp(); } catch(e){} }, 150);
     try { ensureUserCollections(userData); } catch(e){}
 }
 
