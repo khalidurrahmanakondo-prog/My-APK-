@@ -221,8 +221,14 @@ function go(id) {
   $("heading").textContent = m[0]; $("desc").textContent = m[1];
 }
 function busy(btn, on, txt) {
-  if (on) { btn.dataset.o = btn.innerHTML; btn.disabled = true; btn.textContent = txt || "..."; }
-  else { btn.disabled = false; if (btn.dataset.o) btn.innerHTML = btn.dataset.o; }
+  if (on) {
+    if (!btn.dataset.o) btn.dataset.o = btn.innerHTML;
+    btn.disabled = true;
+    btn.textContent = txt || "...";
+  } else {
+    btn.disabled = false;
+    if (btn.dataset.o) { btn.innerHTML = btn.dataset.o; delete btn.dataset.o; }
+  }
 }
 function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
 
@@ -285,14 +291,20 @@ async function lookupUser(email) {
  * কখনো অন্য কারও ডক ওভাররাইট হবে না। সব তথ্য একবারেই লেখা হয়।
  */
 async function createUserDoc(info) {
+  const joined = new Date().toLocaleDateString("en-GB");
+  const makeProfile = (uid, full) => ({
+    uid: uid, name: full.name, email: full.email,
+    birth_year: full.birth_year, birth_date: full.birth_date,
+    joined: full.joined, address: full.address, avatar: full.avatar,
+    credit: full.credit, app_permission: true
+  });
   for (let i = 0; i < 6; i++) {
     const uid = "KR-" + Math.floor(1e7 + Math.random() * 9e7);
     const ref = userRef(uid);
-    const joined = new Date().toLocaleDateString("en-GB");
     const full = {
       uid: uid,
       name: info.name || "",
-      email: info.email,
+      email: String(info.email || "").toLowerCase().trim(),
       birth_year: info.birth_year || "",
       birth_date: info.birth_date || "",
       joined: joined,
@@ -305,19 +317,23 @@ async function createUserDoc(info) {
       email_verified: info.email_verified === true,
       created_at: TS()
     };
-    const created = await db.runTransaction(async tx => {
-      const s = await tx.get(ref);
-      if (s.exists) return false;
-      tx.set(ref, full);
-      return true;
-    });
-    if (created) {
-      return {
-        uid: uid, name: full.name, email: full.email,
-        birth_year: full.birth_year, birth_date: full.birth_date,
-        joined: joined, address: full.address, avatar: full.avatar,
-        credit: full.credit, app_permission: true
-      };
+    try {
+      const created = await db.runTransaction(async tx => {
+        const snap = await tx.get(ref);
+        if (snap.exists) return false;
+        tx.set(ref, full);
+        return true;
+      });
+      if (created) return makeProfile(uid, full);
+    } catch (txError) {
+      // কিছু Firestore rules নতুন ডকে GET/transaction আটকায় কিন্তু authenticated CREATE অনুমতি দেয়।
+      // সেই ক্ষেত্রে নতুন, দীর্ঘ random UID দিয়ে সরাসরি document তৈরি করি; write deny হলে আসল error ফেরত যাবে।
+      const code = String(txError && txError.code || "");
+      if (code !== "permission-denied" && code !== "firestore/permission-denied") throw txError;
+      const directUid = "KR-" + Math.floor(1e12 + Math.random() * 9e12);
+      const directFull = Object.assign({}, full, { uid: directUid });
+      await userRef(directUid).set(directFull);
+      return makeProfile(directUid, directFull);
     }
   }
   throw new Error("uid-collision");
@@ -565,7 +581,10 @@ async function processGoogle(resultOrUser) {
   try { found = await lookupUser(email); }
   catch (e) {
     console.error("Account lookup failed", e);
-    toast("অ্যাকাউন্ট যাচাই করা যায়নি। ইন্টারনেট ও Firebase সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।", "err");
+    const denied = e && (e.code === "permission-denied" || e.code === "firestore/permission-denied");
+    toast(denied
+      ? "Firebase-এ account যাচাই করার read permission নেই। Firestore rules-এ signed-in user-এর email query অনুমতি দিন।"
+      : "Firebase account lookup শেষ হয়নি। ইন্টারনেট পরীক্ষা করে আবার চেষ্টা করুন।", "err");
     return;
   }
 
@@ -594,8 +613,8 @@ async function processGoogle(resultOrUser) {
   } catch (e) {
     console.error("New Firebase account creation failed", e);
     const msg = e && (e.code === "permission-denied" || e.code === "firestore/permission-denied")
-      ? "Firebase অনুমতি না থাকায় অ্যাকাউন্ট সংরক্ষণ হয়নি। Firestore rules পরীক্ষা করুন।"
-      : "নতুন অ্যাকাউন্ট তৈরি করা যায়নি। নেটওয়ার্ক/Firebase পরীক্ষা করে আবার চেষ্টা করুন।";
+      ? "Firebase-এ নতুন account create করার write permission নেই। Firestore rules-এ signed-in user-এর create অনুমতি দিন।"
+      : "নতুন account Firebase-এ save হয়নি। নেটওয়ার্ক/Firebase পরীক্ষা করে আবার চেষ্টা করুন।";
     toast(msg, "err");
   }
 }
@@ -626,7 +645,7 @@ $("btnGoogle").onclick = async () => {
   try {
     try {
       const r = await auth.signInWithPopup(pv);
-      busy(b, false);
+      busy(b, true, "Firebase-এ সংরক্ষণ হচ্ছে…");
       await processGoogle(r);
     } catch (e) {
       if (e.code === "auth/unauthorized-domain") throw e;
