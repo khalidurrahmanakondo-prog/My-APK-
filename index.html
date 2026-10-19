@@ -336,24 +336,53 @@ async function writeLoginSession(userData) {
     if (!userData || !userData.user_profile || !userData.user_profile.uid) return false;
     const uid = String(userData.user_profile.uid);
     const ver = userData.foundVersion || userData.version || APP_VERSION;
+    const now = Date.now();
     const payload = {
         uid: uid,
         ver: ver,
         name: userData.user_profile.name || "",
         email: String(userData.user_profile.email || "").toLowerCase().trim(),
-        at: firebase.firestore.FieldValue.serverTimestamp(),
-        expiresAt: Date.now() + 15 * 60 * 1000
+        avatar: userData.avatar || "",
+        credit: Number(userData.user_credit) || 0,
+        birth_year: userData.user_profile.birth_year || "",
+        joined: userData.user_profile.joined || "",
+        at: now,
+        expiresAt: now + 15 * 60 * 1000
     };
+    const fsPayload = Object.assign({}, payload, {
+        at: firebase.firestore.FieldValue.serverTimestamp()
+    });
     let ok = false;
+    const jobs = [];
+    // ১) Firestore LoginSessions
     if (KR_SID) {
-        try {
-            await db.collection(FIREBASE_COLLECTION_NAME).doc(APP_VERSION).collection("LoginSessions").doc(KR_SID).set(payload, { merge: true });
-            ok = true;
-        } catch (e) { console.warn("[KR] LoginSession লেখা যায়নি:", e && e.message); }
+        jobs.push(
+            db.collection(FIREBASE_COLLECTION_NAME).doc(APP_VERSION).collection("LoginSessions").doc(KR_SID)
+                .set(fsPayload, { merge: true }).then(function() { ok = true; }).catch(function(e) {
+                    console.warn("[KR] FS LoginSession:", e && e.message);
+                })
+        );
     }
-    try {
-        await db.collection(FIREBASE_COLLECTION_NAME).doc(APP_VERSION).collection("LoginSessions").doc("last_" + uid.replace(/[^a-zA-Z0-9_-]/g, "_")).set(payload, { merge: true });
-    } catch (e) {}
+    jobs.push(
+        db.collection(FIREBASE_COLLECTION_NAME).doc(APP_VERSION).collection("LoginSessions")
+            .doc("last_" + uid.replace(/[^a-zA-Z0-9_-]/g, "_"))
+            .set(fsPayload, { merge: true }).catch(function() {})
+    );
+    // ২) Realtime DB — অ্যাপ সহজে পড়তে পারে (Firestore rule ব্লক হলেও)
+    if (typeof rtdb !== "undefined" && rtdb) {
+        if (KR_SID) {
+            jobs.push(
+                rtdb.ref(FIREBASE_COLLECTION_NAME + "/LoginSessions/" + KR_SID).set(payload)
+                    .then(function() { ok = true; }).catch(function(e) {
+                        console.warn("[KR] RTDB LoginSession:", e && e.message);
+                    })
+            );
+        }
+        jobs.push(
+            rtdb.ref(FIREBASE_COLLECTION_NAME + "/LoginSessions/last").set(payload).catch(function() {})
+        );
+    }
+    await Promise.all(jobs);
     return ok;
 }
 
@@ -389,10 +418,11 @@ function maskEmail(email) {
 }
 async function returnToApp() {
     const cur = PortalStorage.cur();
-    // সেশন দ্রুত লেখো (সর্বোচ্চ ৫০০ms)
-    try { await Promise.race([writeLoginSession(cur), new Promise(r => setTimeout(r, 500))]); } catch(e){}
+    // সেশন দ্রুত লেখো (সর্বোচ্চ ১.২ সেকেন্ড অপেক্ষা)
+    try { await Promise.race([writeLoginSession(cur), new Promise(r => setTimeout(r, 1200))]); } catch(e){}
     try { notifyApp(cur); } catch(e){}
     try { if (window.opener) { window.opener.focus(); window.close(); return; } } catch(e){}
+    // WebView: আগের ক্যালকুলেটর পেজে ফিরে যাও
     try {
         if (history.length > 1) { history.back(); return; }
     } catch(e){}
@@ -755,11 +785,11 @@ async function finishLogin(userData, title) {
         (emailShow ? ("ইমেইল: <b>" + emailShow + "</b><br>") : "") +
         "UID: <b style=\"color:#4ade80\">" + uidShow + "</b><br><br>অ্যাপে ফিরে যাচ্ছে…";
     goPanel("success");
-    // দ্রুত সেশন লেখো (সর্বোচ্চ ৪০০ms) — অ্যাপে তাড়াতাড়ি সিঙ্ক
-    try { await Promise.race([writeLoginSession(userData), new Promise(r => setTimeout(r, 400))]); } catch(e){}
+    // সেশন আগে লেখো (অ্যাপ যেন সাথে সাথে পায়), তারপর ফিরে যাও
+    try { await Promise.race([writeLoginSession(userData), new Promise(r => setTimeout(r, 600))]); } catch(e){}
     try { notifyApp(userData); } catch(e){}
     toast("সফল! অ্যাপে ফিরে যাচ্ছে…", "ok");
-    setTimeout(function() { try { returnToApp(); } catch(e){} }, 150);
+    setTimeout(function() { try { returnToApp(); } catch(e){} }, 200);
     try { ensureUserCollections(userData); } catch(e){}
 }
 
