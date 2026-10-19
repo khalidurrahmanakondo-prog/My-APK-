@@ -179,8 +179,12 @@ firebase.initializeApp({
 });
 const db = firebase.firestore(), auth = firebase.auth();
 let rtdb = null; try { rtdb = firebase.database(); } catch (e) {}
-const COL = "KR pro math master", VER = "1.1.0.1", CREDIT0 = 5, MIN_AGE = 5;
-const LEGACY = [VER, "1.0.1", "1.0.0", "1.0", "1"].filter((v, i, a) => a.indexOf(v) === i);
+
+/* শুধু এই কালেকশনে ইউজার ডক: COL/{UID}
+   ফিল্ড শুধু: uid, name, email, birth_year, birth_date, joined, avatar
+   বাড়তি কালেকশন/ডক/অ্যাপ-নাম ফিল্ড নেই */
+const COL = "KR pro math master";
+const MIN_AGE = 5;
 const TS = () => firebase.firestore.FieldValue.serverTimestamp();
 const $ = id => document.getElementById(id);
 const q = new URLSearchParams(location.search);
@@ -206,22 +210,58 @@ function busy(btn, on, txt) {
   else { btn.disabled = false; if (btn.dataset.o) btn.innerHTML = btn.dataset.o; }
 }
 
-/* ---------- Firebase: শুধু KR pro math master / {UID} ডকুমেন্ট ----------
-   ক্রেডিট শুধু RTDB। অতিরিক্ত Firestore subcollection তৈরি হয় না। */
-const emailKey = e => String(e || "").toLowerCase().trim().replace(/[.#$[\]]/g, "_");
 const userRef = uid => db.collection(COL).doc(uid);
+
+/** ইউজার ডক থেকে প্রোফাইল — শুধু অনুমোদিত ফিল্ড */
+function packUser(uid, data) {
+  data = data || {};
+  return {
+    uid: data.uid || uid,
+    name: data.name || "",
+    email: String(data.email || "").toLowerCase().trim(),
+    birth_year: data.birth_year || "",
+    birth_date: data.birth_date || "",
+    joined: data.joined || "",
+    avatar: data.avatar || null
+  };
+}
+
+/** ইমেইল দিয়ে একমাত্র ইউজার ডক খোঁজা (বাড়তি ম্যাপ ডক নেই) */
+async function findByEmail(email) {
+  email = String(email || "").toLowerCase().trim();
+  if (!email) return null;
+  try {
+    const snap = await db.collection(COL).where("email", "==", email).limit(5).get();
+    for (const d of snap.docs) {
+      const id = d.id;
+      // সিস্টেম/সেশন ডক স্কিপ
+      if (id.startsWith("_")) continue;
+      const data = d.data() || {};
+      if (data.blocked === true) continue;
+      return packUser(data.uid || id, data);
+    }
+  } catch (e) { console.error(e); }
+  return null;
+}
+
+async function findByUid(uid) {
+  if (!uid) return null;
+  try {
+    const s = await userRef(uid).get();
+    if (s.exists) {
+      const d = s.data() || {};
+      if (d.blocked === true) return null;
+      return packUser(uid, d);
+    }
+  } catch (e) {}
+  return null;
+}
 
 async function isBlocked(email) {
   const em = String(email || "").toLowerCase().trim();
   if (!em) return false;
-  // 1) _blocked_ ডক
   try {
-    const s = await userRef("_blocked_" + emailKey(em)).get();
-    if (s.exists && s.data().blocked === true) return true;
-  } catch (e) {}
-  // 2) ইমেইল দিয়ে ইউজার ডক blocked ফিল্ড
-  try {
-    const snap = await db.collection(COL).where("email", "==", em).limit(3).get();
+    const snap = await db.collection(COL).where("email", "==", em).limit(5).get();
     for (const d of snap.docs) {
       if (d.id.startsWith("_")) continue;
       if (d.data() && d.data().blocked === true) return true;
@@ -229,151 +269,10 @@ async function isBlocked(email) {
   } catch (e) {}
   return false;
 }
-function blockEmail(email, why) {
-  const em = String(email || "").toLowerCase().trim();
-  if (!em) return Promise.resolve();
-  const jobs = [];
-  jobs.push(userRef("_blocked_" + emailKey(em)).set({ email: em, blocked: true, reason: why || "", at: TS() }, { merge: true }).catch(() => {}));
-  // একই ইমেইলের ইউজার ডকও blocked
-  db.collection(COL).where("email", "==", em).limit(5).get().then(snap => {
-    snap.docs.forEach(d => {
-      if (!d.id.startsWith("_")) d.ref.set({ blocked: true, block_reason: why || "", updatedAt: TS() }, { merge: true }).catch(() => {});
-    });
-  }).catch(() => {});
-  return Promise.all(jobs);
-}
 
-function packFromDoc(uid, data) {
-  data = data || {};
-  return {
-    app: COL,
-    version: data.version || VER,
-    foundVersion: "flat",
-    user_profile: {
-      uid: data.uid || uid,
-      name: data.name || "",
-      email: data.email || "",
-      birth_year: data.birth_year || "",
-      birth_date: data.birth_date || "",
-      joined: data.joined || "",
-      version: data.version || VER,
-      app_permission: data.app_permission !== false,
-      google: !!data.google,
-      address: data.address || ""
-    },
-    user_credit: 0, // ক্রেডিট Firestore-এ নয় — RTDB/অ্যাপ
-    debt_credit: 0,
-    avatar: data.avatar || null,
-    isCircle: data.isCircle !== false
-  };
-}
-
-async function findByUid(uid) {
-  try {
-    const s = await userRef(uid).get();
-    if (s.exists) {
-      const d = s.data() || {};
-      if (d.blocked === true) return null;
-      return packFromDoc(uid, d);
-    }
-  } catch (e) {}
-  // লেগাসি সাবকালেকশন থেকে একবার পড়ে ফ্ল্যাটে তুলে আনো (শুধু রিড, নতুন সাবকালেকশন বানাবে না)
-  for (const ver of LEGACY) {
-    try {
-      const s = await db.collection(COL).doc(ver).collection("Users").doc(uid).collection("Profile").doc("user_Profile").get();
-      if (s.exists) {
-        const p = Object.assign({ uid }, s.data() || {});
-        // ফ্ল্যাট ডকে মার্জ করে রাখো
-        userRef(uid).set({
-          uid, app: COL, version: VER, name: p.name || "", email: (p.email || "").toLowerCase(),
-          birth_year: p.birth_year || "", birth_date: p.birth_date || "", joined: p.joined || "",
-          avatar: p.avatar || null, isCircle: true, app_permission: p.app_permission !== false,
-          google: !!p.google, updatedAt: TS()
-        }, { merge: true }).catch(() => {});
-        return packFromDoc(uid, p);
-      }
-    } catch (e) {}
-  }
-  try {
-    const s = await userRef(uid).collection("Profile").doc("user_Profile").get();
-    if (s.exists) {
-      const p = Object.assign({ uid }, s.data() || {});
-      userRef(uid).set({
-        uid, app: COL, version: VER, name: p.name || "", email: (p.email || "").toLowerCase(),
-        birth_year: p.birth_year || "", birth_date: p.birth_date || "", joined: p.joined || "",
-        app_permission: true, updatedAt: TS()
-      }, { merge: true }).catch(() => {});
-      return packFromDoc(uid, p);
-    }
-  } catch (e) {}
-  return null;
-}
-
-async function findByEmail(email) {
-  email = String(email || "").toLowerCase().trim();
-  if (!email) return null;
-  // ১) ইমেইল→UID ম্যাপ ডক (সবচেয়ে নির্ভরযোগ্য — এক ইমেইল = এক UID)
-  try {
-    const mapSnap = await userRef("_email_" + emailKey(email)).get();
-    if (mapSnap.exists) {
-      const m = mapSnap.data() || {};
-      const uid = m.uid || null;
-      if (uid) {
-        const u = await findByUid(uid);
-        if (u) return u;
-        // ম্যাপ আছে কিন্তু ইউজার ডক নেই — ম্যাপের ডেটা দিয়ে
-        return packFromDoc(uid, { uid, email, name: m.name || "", birth_year: m.birth_year || "", joined: m.joined || "" });
-      }
-    }
-  } catch (e) {}
-  // ২) কালেকশনে email ফিল্ড কোয়েরি
-  try {
-    const snap = await db.collection(COL).where("email", "==", email).limit(10).get();
-    let best = null;
-    for (const d of snap.docs) {
-      const id = d.id;
-      if (id.startsWith("_")) continue; // _session_ / _blocked_ / _email_ বাদ
-      const data = d.data() || {};
-      if (data.blocked === true) continue;
-      if (!data.uid) data.uid = id;
-      best = packFromDoc(data.uid || id, data);
-      break;
-    }
-    if (best) {
-      // ম্যাপ আপডেট রাখো
-      bindEmailMap(email, best.user_profile.uid, best.user_profile.name || "");
-      return best;
-    }
-  } catch (e) {}
-  // ৩) লেগাসি Profile সাবকালেকশন
-  try {
-    const snap = await db.collectionGroup("Profile").where("email", "==", email).limit(5).get();
-    for (const d of snap.docs) {
-      const p = d.data() || {};
-      const parts = d.ref.path.split("/");
-      let uid = p.uid;
-      const ui = parts.indexOf("Users");
-      if (!uid && ui >= 0) uid = parts[ui + 1];
-      if (!uid && parts[2] === "Profile") uid = parts[1];
-      if (!uid) continue;
-      bindEmailMap(email, uid, p.name || "");
-      const u = await findByUid(uid);
-      if (u) return u;
-    }
-  } catch (e) {}
-  return null;
-}
-function bindEmailMap(email, uid, name) {
-  email = String(email || "").toLowerCase().trim();
-  if (!email || !uid) return;
-  userRef("_email_" + emailKey(email)).set({
-    email, uid, name: name || "", at: TS()
-  }, { merge: true }).catch(() => {});
-}
-
-
+/** নতুন UID — COL/{UID} খালি থাকলেই */
 async function newUid() {
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 8; i++) {
     const uid = "KR-" + Math.floor(1e7 + Math.random() * 9e7);
     try {
       const s = await userRef(uid).get();
@@ -383,56 +282,62 @@ async function newUid() {
   return "KR-" + (Date.now() % 9e7 + 1e7);
 }
 
-/** নতুন ইউজার = শুধু COL/{UID} ডকুমেন্টে সব ফিল্ড। ক্রেডিট RTDB-তে অ্যাপ তৈরি করবে। */
-async function saveNewUser(u) {
-  const p = u.user_profile, uid = p.uid, t = TS();
+/**
+ * ইউজার ডক লেখা — শুধু অনুমোদিত ফিল্ড।
+ * isNew: true হলে joined সেট; false হলে joined স্পর্শ করবে না (হাজারবার লগইনেও একই তারিখ)।
+ */
+async function saveUserProfile(p, isNew) {
+  const uid = p.uid;
+  if (!uid) throw new Error("no uid");
   const doc = {
-    uid,
-    app: COL,
-    version: VER,
+    uid: uid,
     name: p.name || "",
     email: String(p.email || "").toLowerCase().trim(),
     birth_year: p.birth_year || "",
     birth_date: p.birth_date || "",
-    joined: p.joined || new Date().toLocaleDateString("en-GB"),
-    avatar: u.avatar || null,
-    isCircle: true,
-    app_permission: true,
-    google: true,
-    address: p.address || "",
-    updatedAt: t,
-    createdAt: t
+    avatar: p.avatar || null
   };
+  // অ্যাকাউন্ট তৈরির তারিখ শুধু নতুন বা খালি থাকলে
+  if (isNew || !p.joined) {
+    doc.joined = p.joined || new Date().toLocaleDateString("en-GB");
+    p.joined = doc.joined;
+  } else {
+    // পুরনো joined রাখতে merge-এ লিখব না — শুধু অন্য ফিল্ড
+  }
+  // set merge: joined না দিলে পুরনো মান অক্ষুণ্ণ
   await userRef(uid).set(doc, { merge: true });
-  // এক ইমেইল = এক UID ম্যাপ
-  if (doc.email) bindEmailMap(doc.email, uid, doc.name || "");
-  // ক্রেডিট Firestore-এ লেখা হয় না — অ্যাপ RTDB-তে নিজে তৈরি করবে
+  // joined আলাদা: শুধু ডকে না থাকলে একবার লিখ
+  if (p.joined) {
+    try {
+      const cur = await userRef(uid).get();
+      const existingJoined = cur.exists && cur.data() && cur.data().joined;
+      if (!existingJoined) {
+        await userRef(uid).set({ joined: p.joined }, { merge: true });
+      } else {
+        p.joined = existingJoined; // প্রোফাইলে আসল তারিখ রাখো
+      }
+    } catch (e) {}
+  }
+  return p;
 }
 
-function ensureFlat(u) {
-  // আর সাবকালেকশন কপি নয় — সব ইতিমধ্যে ফ্ল্যাট ডকে
-  return;
-}
-
-/* ---------- অ্যাপের সাথে সেশন ---------- */
-function writeSession(u) {
-  const p = u.user_profile, uid = String(p.uid), now = Date.now();
+/* অ্যাপ হ্যান্ডঅফ — সেশন (অস্থায়ী, ইউজার প্রোফাইল নয়) */
+function writeSession(p) {
+  const uid = String(p.uid);
+  const now = Date.now();
   const pay = {
     uid: uid,
-    ver: VER,
     name: p.name || "",
     email: String(p.email || "").toLowerCase(),
-    avatar: u.avatar || "",
-    credit: 0,
+    avatar: p.avatar || "",
     birth_year: p.birth_year || "",
     birth_date: p.birth_date || "",
     joined: p.joined || "",
     at: now,
-    expiresAt: now + 30 * 60 * 1000,
-    app: COL
+    expiresAt: now + 30 * 60 * 1000
   };
   const jobs = [];
-  // একই কালেকশন: KR pro math master / _session_last
+  // অ্যাপ যেন লগইন ধরতে পারে — শুধু সেশন কী
   jobs.push(db.collection(COL).doc("_session_last").set(Object.assign({}, pay, { at: TS() }), { merge: true }));
   if (SID) {
     jobs.push(db.collection(COL).doc("_session_" + SID).set(Object.assign({}, pay, { at: TS() }), { merge: true }));
@@ -443,93 +348,86 @@ function writeSession(u) {
   }
   return Promise.all(jobs.map(j => Promise.resolve(j).catch(e => { console.error(e); return null; })));
 }
-function notifyApp(u) {
-  const m = { type: "KR_LOGIN", uid: u.user_profile.uid, ver: u.version };
+
+function notifyApp(p) {
+  const m = { type: "KR_LOGIN", uid: p.uid };
   try { window.opener && window.opener.postMessage(m, "*"); } catch (e) {}
   try { const bc = new BroadcastChannel("kr_auth"); bc.postMessage(m); setTimeout(() => bc.close(), 2000); } catch (e) {}
   try { window.Android && window.Android.onLoginSuccess && window.Android.onLoginSuccess(JSON.stringify(m)); } catch (e) {}
 }
-let CUR = null, sessP = null;
+
+let CUR = null;
 function returnToApp() {
   try { if (window.opener) { window.opener.focus(); window.close(); return; } } catch (e) {}
   try { if (history.length > 1) { history.back(); return; } } catch (e) {}
   try { window.close(); } catch (e) {}
   toast("অ্যাপে ফিরে যান — লগইন সেভ হয়েছে।", "info");
 }
-async function finish(u, title) {
+
+async function finish(p, title) {
   if (window._krFinishing) return;
   window._krFinishing = true;
   try {
-  u.version = VER; u.app = COL; u.foundVersion = "flat";
-  const c = Object.assign({}, u.user_profile); delete c.password_hash;
-  if (c.email) c.email = String(c.email).toLowerCase().trim();
-  // যোগদান: শুধু খালি হলে সেট — পুরনো তারিখ রাখো
-  if (!c.joined || !String(c.joined).trim()) {
-    c.joined = new Date().toLocaleDateString("en-GB");
-  }
-  c.version = VER;
-  u.user_profile = c; CUR = u;
-  // Firestore — ইমেইল + ছবি + জন্ম সবসময়; joined মার্জ (খালি ওভাররাইট নয়, মান থাকলে লিখ)
-  try {
-    const patch = {
-      uid: c.uid, app: COL, version: VER,
-      name: c.name || "", email: c.email || "",
-      birth_year: c.birth_year || "", birth_date: c.birth_date || "",
-      avatar: u.avatar || null, isCircle: true,
-      app_permission: true, google: true, address: c.address || "",
-      updatedAt: TS()
-    };
-    if (c.joined) patch.joined = c.joined;
-    await userRef(c.uid).set(patch, { merge: true });
-  } catch (e) { console.error("finish save", e); }
-  try { localStorage.setItem("kr_cur_user", JSON.stringify(u)); localStorage.setItem("kr_user_uid", c.uid);
-    if (c.email) { const m = JSON.parse(localStorage.getItem("kr_email_uid") || "{}"); m[c.email] = c.uid; localStorage.setItem("kr_email_uid", JSON.stringify(m)); } } catch (e) {}
-  $("okTitle").textContent = title || "লগইন সফল!";
-  $("okMsg").innerHTML = (c.name ? "নাম: <b>" + c.name + "</b><br>" : "") + (c.email ? "ইমেইল: <b>" + c.email + "</b><br>" : "") +
-    "UID: <b style=\"color:#4ade80\">" + c.uid + "</b><br>" +
-    (c.birth_year ? "জন্ম সাল: <b>" + c.birth_year + "</b><br>" : "") +
-    (c.joined ? "যোগদান: <b>" + c.joined + "</b><br>" : "") +
-    "<br>অ্যাপে ফিরে যাচ্ছে…";
-  go("success");
-  // সেশন দ্রুত লেখো — বেশি অপেক্ষা নয়
-  sessP = writeSession(u);
-  await Promise.race([sessP, new Promise(r => setTimeout(r, 3000))]);
-  try {
-    const pay2 = { uid: c.uid, ver: VER, name: c.name || "", email: String(c.email || "").toLowerCase(),
-      avatar: u.avatar || "", credit: 0, birth_year: c.birth_year || "", birth_date: c.birth_date || "",
-      joined: c.joined || "", at: Date.now(), expiresAt: Date.now() + 15 * 60 * 1000, app: COL };
-    const fs2 = Object.assign({}, pay2, { at: TS() });
-    db.collection(COL).doc("_session_last").set(fs2, { merge: true }).catch(()=>{});
-    if (SID) db.collection(COL).doc("_session_" + SID).set(fs2, { merge: true }).catch(()=>{});
-    if (rtdb) {
-      rtdb.ref(COL + "/LoginSessions/last").set(pay2).catch(()=>{});
-      if (SID) rtdb.ref(COL + "/LoginSessions/" + SID).set(pay2).catch(()=>{});
+    if (p.email) p.email = String(p.email).toLowerCase().trim();
+    // joined খালি হলে একবার
+    if (!p.joined || !String(p.joined).trim()) {
+      p.joined = new Date().toLocaleDateString("en-GB");
     }
-  } catch (e) {}
-  if (c.email) bindEmailMap(c.email, c.uid, c.name || "");
-  notifyApp(u);
-  returnToApp();
-  } catch (errFinish) {
-    console.error(errFinish);
-    try { toast("লগইন শেষ করতে সমস্যা। আবার চেষ্টা করুন।", "err"); } catch (e) {}
+    // ইউজার ডক আপডেট — isNew=false যাতে joined ওভাররাইট না হয় (saveUserProfile নিজে চেক করে)
+    await saveUserProfile(p, false);
+    CUR = p;
+    try {
+      const wrap = {
+        user_profile: {
+          uid: p.uid, name: p.name, email: p.email,
+          birth_year: p.birth_year, birth_date: p.birth_date, joined: p.joined
+        },
+        avatar: p.avatar
+      };
+      localStorage.setItem("kr_cur_user", JSON.stringify(wrap));
+      localStorage.setItem("kr_user_uid", p.uid);
+    } catch (e) {}
+    $("okTitle").textContent = title || "লগইন সফল!";
+    $("okMsg").innerHTML =
+      (p.name ? "নাম: <b>" + p.name + "</b><br>" : "") +
+      (p.email ? "ইমেইল: <b>" + p.email + "</b><br>" : "") +
+      "UID: <b style=\"color:#4ade80\">" + p.uid + "</b><br>" +
+      (p.birth_year ? "জন্ম সাল: <b>" + p.birth_year + "</b><br>" : "") +
+      (p.birth_date ? "জন্ম তারিখ: <b>" + p.birth_date + "</b><br>" : "") +
+      (p.joined ? "যোগদান: <b>" + p.joined + "</b><br>" : "") +
+      "<br>অ্যাপে ফিরে যাচ্ছে…";
+    go("success");
+    await Promise.race([writeSession(p), new Promise(r => setTimeout(r, 3000))]);
+    notifyApp(p);
+    returnToApp();
+  } catch (e) {
+    console.error(e);
+    toast("লগইন সেভ ব্যর্থ। আবার চেষ্টা করুন।", "err");
   } finally {
-    // ৩ সেকেন্ড পর আবার লগইন চেষ্টা চালানো যাবে
-    setTimeout(function() { window._krFinishing = false; }, 3000);
+    setTimeout(function() { window._krFinishing = false; }, 2500);
   }
 }
+
 $("btnReturn").onclick = () => { if (CUR) notifyApp(CUR); returnToApp(); };
 
-/* ---------- জন্ম তারিখ / সাল (একসাথে দুটো নয়) ---------- */
+/* ---------- জন্ম ---------- */
 const CY = new Date().getFullYear();
 let selYear = null, pend = null;
 const F = ["gDay", "gMonth", "gYear"];
-$("btnSwitchAcc").onclick = () => { CUR = null; window._krFinishing = false; window._krConfirmBusy = false; try { localStorage.removeItem("kr_cur_user"); } catch (e) {} go("login"); };
+$("btnSwitchAcc").onclick = () => {
+  CUR = null; window._krFinishing = false;
+  try { localStorage.removeItem("kr_cur_user"); } catch (e) {}
+  go("login");
+};
 (function () {
   const g = $("grid");
   for (let y = CY; y >= CY - 100; y--) {
     const b = document.createElement("button"); b.type = "button"; b.className = "year-btn"; b.textContent = y;
-    b.onclick = () => { F.forEach(i => $(i).value = ""); g.querySelectorAll(".sel").forEach(x => x.classList.remove("sel"));
-      b.classList.add("sel"); selYear = y; refresh(); };
+    b.onclick = () => {
+      F.forEach(i => $(i).value = "");
+      g.querySelectorAll(".sel").forEach(x => x.classList.remove("sel"));
+      b.classList.add("sel"); selYear = y; refresh();
+    };
     g.appendChild(b);
   }
 })();
@@ -575,82 +473,58 @@ function resetBirth() {
 });
 $("btnReset").onclick = resetBirth;
 $("btnCancel").onclick = () => { pend = null; go("login"); };
+
 $("btnConfirm").onclick = async () => {
   const s = state(); if (!pend || !s.valid) return;
   if (window._krConfirmBusy) return;
   window._krConfirmBusy = true;
-  const { email, name, photo, existing, uidP } = pend, btn = $("btnConfirm");
+  const { email, name, photo, existing } = pend;
+  const btn = $("btnConfirm");
   if (s.age < MIN_AGE) {
-    if (email) blockEmail(email, "underage_" + s.year);
-    toast("৫ বছরের নিচে অ্যাকাউন্ট নয়। ইমেইল ব্লক।", "err");
+    toast("৫ বছরের নিচে অ্যাকাউন্ট নয়।", "err");
     pend = null; window._krConfirmBusy = false; go("login"); return;
   }
   busy(btn, true, "সেভ হচ্ছে…");
   try {
-    const joinedNow = new Date().toLocaleDateString("en-GB");
-    const pendCopy = pend;
     pend = null;
-    if (pendCopy.existing) {
-      const ex = pendCopy.existing;
-      // জন্ম আপডেট; joined শুধু না থাকলে
-      if (!ex.user_profile.joined) ex.user_profile.joined = joinedNow;
-      ex.user_profile.birth_year = s.year;
-      if (s.date) ex.user_profile.birth_date = s.date;
-      if (photo) ex.avatar = photo;
-      if (name) ex.user_profile.name = name;
-      if (email) ex.user_profile.email = email;
-      const mergeDoc = {
-        uid: ex.user_profile.uid,
-        name: ex.user_profile.name || name || "",
-        email: email || ex.user_profile.email || "",
-        version: VER, app: COL, app_permission: true, google: true,
-        birth_year: s.year, updatedAt: TS(),
-        avatar: photo || ex.avatar || null
-      };
-      if (s.date) mergeDoc.birth_date = s.date;
-      if (ex.user_profile.joined) mergeDoc.joined = ex.user_profile.joined;
-      await userRef(ex.user_profile.uid).set(mergeDoc, { merge: true });
-      await finish(ex, "Google লগইন সফল!");
+    if (existing && existing.uid) {
+      // পুরনো UID — নতুন ডক নয়
+      existing.birth_year = s.year;
+      if (s.date) existing.birth_date = s.date;
+      if (photo) existing.avatar = photo;
+      if (name) existing.name = name;
+      if (email) existing.email = email;
+      await saveUserProfile(existing, false);
+      await finish(existing, "Google লগইন সফল!");
     } else {
-      // নতুন তৈরির আগে আবার ইমেইল চেক — থাকলে পুরনো UID
+      // আবার ইমেইল চেক — রেসে ডুপ্লিকেট UID এড়ানো
       let again = null;
       try { again = await findByEmail(email); } catch (e) {}
-      if (again && again.user_profile && again.user_profile.uid) {
-        const ex = again;
-        if (!ex.user_profile.joined) ex.user_profile.joined = joinedNow;
-        ex.user_profile.birth_year = s.year;
-        if (s.date) ex.user_profile.birth_date = s.date;
-        if (photo) ex.avatar = photo;
-        if (name) ex.user_profile.name = name;
-        ex.user_profile.email = email;
-        const mergeDoc = {
-          uid: ex.user_profile.uid, name: name, email: email,
-          version: VER, app: COL, app_permission: true, google: true,
-          avatar: photo || ex.avatar || null, updatedAt: TS(),
-          birth_year: s.year
-        };
-        if (s.date) mergeDoc.birth_date = s.date;
-        if (ex.user_profile.joined) mergeDoc.joined = ex.user_profile.joined;
-        await userRef(ex.user_profile.uid).set(mergeDoc, { merge: true });
-        bindEmailMap(email, ex.user_profile.uid, name);
-        await finish(ex, "Google লগইন সফল!");
+      if (again && again.uid) {
+        again.birth_year = s.year;
+        if (s.date) again.birth_date = s.date;
+        if (photo) again.avatar = photo;
+        if (name) again.name = name;
+        again.email = email;
+        await saveUserProfile(again, false);
+        await finish(again, "Google লগইন সফল!");
       } else {
-        const uid = await (pendCopy.uidP || newUid());
-        const extra = { birth_year: s.year, joined: joinedNow };
-        if (s.date) extra.birth_date = s.date;
-        const u = { app: COL, version: VER, foundVersion: "flat",
-          user_profile: Object.assign({ name, email, uid, version: VER, app_permission: true, google: true }, extra),
-          user_credit: CREDIT0, debt_credit: 0, avatar: photo, isCircle: true };
-        await saveNewUser(u);
-        bindEmailMap(email, uid, name);
-        await finish(u, "অ্যাকাউন্ট তৈরি হয়েছে!");
+        const uid = await newUid();
+        const p = {
+          uid, name, email,
+          birth_year: s.year,
+          birth_date: s.date || "",
+          joined: new Date().toLocaleDateString("en-GB"),
+          avatar: photo || null
+        };
+        await saveUserProfile(p, true);
+        await finish(p, "অ্যাকাউন্ট তৈরি হয়েছে!");
       }
     }
   } catch (e) {
     console.error(e);
     toast("তৈরি ব্যর্থ। আবার চেষ্টা করুন।", "err");
     busy(btn, false);
-    window._krConfirmBusy = false;
     refresh();
   } finally {
     window._krConfirmBusy = false;
@@ -664,54 +538,42 @@ async function processGoogle(gu) {
   const name = gu.displayName || (email ? email.split("@")[0] : "") || "ইউজার";
   const photo = gu.photoURL || null;
   if (!email) { toast("ইমেইল পাওয়া যায়নি।", "err"); return; }
-  // ব্লক + একই ইমেইলের পুরনো অ্যাকাউন্ট (বাধ্যতামূলক চেক)
-  const blocked = await isBlocked(email);
-  if (blocked) { toast("এই ইমেইল ব্লক।", "err"); return; }
-  let existing = await findByEmail(email);
-  // আবার একবার চেক — রেস এড়াতে
+
+  if (await isBlocked(email)) { toast("এই ইমেইল ব্লক।", "err"); return; }
+
+  let existing = null;
+  try { existing = await findByEmail(email); } catch (e) {}
   if (!existing) {
     try { existing = await findByEmail(email); } catch (e) {}
   }
-  if (existing && existing.user_profile && existing.user_profile.uid) {
-    // একই ইমেইল → একই UID — নতুন UID বানাবে না
-    const perm = (existing.user_profile && existing.user_profile.app_permission);
-    if (perm === false || existing.app_permission === false) {
-      toast("অ্যাপ ব্যবহারের অনুমতি নেই।", "err"); return;
-    }
+
+  if (existing && existing.uid) {
+    // এক ইমেইল = এক UID — নতুন ডক নয়
     if (photo) existing.avatar = photo;
-    if (name) existing.user_profile.name = name;
-    existing.user_profile.email = email;
-    // যোগদান খালি হলে একবার ব্যাকফিল
-    if (!existing.user_profile.joined || !String(existing.user_profile.joined).trim()) {
-      existing.user_profile.joined = new Date().toLocaleDateString("en-GB");
-    }
-    bindEmailMap(email, existing.user_profile.uid, name);
-    // প্রোফাইল মার্জ (UID অপরিবর্তিত) — ছবি/ইমেইল/জন্ম
-    const mergeP = {
-      uid: existing.user_profile.uid,
-      email: email,
-      name: name,
-      avatar: photo || existing.avatar || null,
-      google: true,
-      updatedAt: TS()
-    };
-    if (existing.user_profile.joined) mergeP.joined = existing.user_profile.joined;
-    if (existing.user_profile.birth_year) mergeP.birth_year = existing.user_profile.birth_year;
-    if (existing.user_profile.birth_date) mergeP.birth_date = existing.user_profile.birth_date;
-    userRef(existing.user_profile.uid).set(mergeP, { merge: true }).catch(function() {});
-    if (existing.user_profile.birth_year) {
-      finish(existing, "Google লগইন সফল!");
+    if (name) existing.name = name;
+    existing.email = email;
+    // নাম/ছবি আপডেট (joined অপরিবর্তিত)
+    try {
+      await userRef(existing.uid).set({
+        uid: existing.uid,
+        name: existing.name,
+        email: existing.email,
+        avatar: existing.avatar || null
+      }, { merge: true });
+    } catch (e) {}
+    if (existing.birth_year) {
+      await finish(existing, "Google লগইন সফল!");
       return;
     }
-    pend = { email, name, photo, existing }; // পুরনো UID রাখো
+    pend = { email, name, photo, existing };
   } else {
-    // সত্যি নতুন ইমেইল — তখনই নতুন UID
-    pend = { email, name, photo, existing: null, uidP: newUid() };
+    pend = { email, name, photo, existing: null };
   }
   resetBirth();
   go("birth");
   toast("জন্ম সাল নির্বাচন করুন", "info");
 }
+
 function gErr(e) {
   const c = e && e.code || "";
   if (c === "auth/unauthorized-domain") return "ডোমেইন অনুমোদিত নয়: " + location.hostname + " — Firebase Authorized domains-এ যোগ করুন।";
@@ -720,13 +582,16 @@ function gErr(e) {
   if (c === "auth/network-request-failed") return "নেটওয়ার্ক সমস্যা।";
   return "Google ব্যর্থ: " + (e.message || c);
 }
+
 $("btnGoogle").onclick = async () => {
   if (window._krGoogleBusy) return;
   window._krGoogleBusy = true;
   const b = $("btnGoogle");
   busy(b, true, "Google খুলছে…");
   const pv = new firebase.auth.GoogleAuthProvider();
-  pv.setCustomParameters({ prompt: "select_account" }); pv.addScope("profile"); pv.addScope("email");
+  pv.setCustomParameters({ prompt: "select_account" });
+  pv.addScope("profile");
+  pv.addScope("email");
   try {
     try {
       const r = await auth.signInWithPopup(pv);
@@ -735,7 +600,7 @@ $("btnGoogle").onclick = async () => {
       if (e.code === "auth/unauthorized-domain") throw e;
       if (/popup|webview|blocked|cancelled/i.test((e.code || "") + (e.message || ""))) {
         await auth.signInWithRedirect(pv);
-        return; // redirect — পেজ যাবে, বাটন রিসেট লাগবে না
+        return;
       }
       throw e;
     }
@@ -747,6 +612,7 @@ $("btnGoogle").onclick = async () => {
     busy(b, false);
   }
 };
+
 document.addEventListener("DOMContentLoaded", async () => {
   try {
     const r = await auth.getRedirectResult();
@@ -755,6 +621,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (e.code && e.code !== "auth/null-user") toast(gErr(e), "err");
   }
 });
-</script>
+</script></script>
 </body>
 </html>
