@@ -90,11 +90,12 @@
     <div class="toast-wrap" id="toastWrap"></div>
     <div class="wrap">
         <a class="back-app" href="#" onclick="returnToApp(); return false;">⬅️ অ্যাপে ফিরে যান</a>
+        <!-- স্থায়ী অ্যাপ লোগো/নাম নেই — অ্যাপ থেকে শেয়ার করলে দেখাবে -->
         <div class="brand">
-            <div class="logo-box">
-                <img src="https://i.ibb.co/mCkFYxkg/KR-Pure-1785491441116.png" alt="KR" width="80" height="80">
+            <div class="logo-box" id="sharedLogoBox" style="display:none;">
+                <img id="sharedAppLogo" src="" alt="App" width="80" height="80">
             </div>
-            <h1 class="btitle">KR calculator A</h1>
+            <h1 class="btitle" id="sharedAppName" style="display:none;"></h1>
             <h2 class="bsub" id="heading">লগইন / সাইন ইন</h2>
             <p class="bdesc" id="desc">ইমেইল+পাসওয়ার্ড, UID+পাসওয়ার্ড, অথবা Google।</p>
         </div>
@@ -111,13 +112,13 @@
                         </div>
                     </div>
                     <div class="ib">
-                        <label>পাসওয়ার্ড <span style="font-weight:400;color:#94a3b8;">(ঐচ্ছিক — না থাকলে খালি রাখুন)</span></label>
+                        <label>পাসওয়ার্ড <span style="font-weight:400;color:#94a3b8;">(সেট থাকলে আবশ্যক)</span></label>
                         <div class="iw">
                             <i class="fa-solid fa-lock"></i>
-                            <input type="password" id="lPass" class="has-eye" autocomplete="current-password" placeholder="পাসওয়ার্ড (সেট করা থাকলে)">
+                            <input type="password" id="lPass" class="has-eye" autocomplete="current-password" placeholder="কমপক্ষে ৬ অক্ষর (ইংরেজি)" minlength="6" pattern="[^\s\u0980-\u09FF]*" inputmode="latin">
                             <button type="button" class="eye-btn" data-for="lPass"><i class="fa-regular fa-eye"></i></button>
                         </div>
-                        <small class="help">পাসওয়ার্ড সেট না থাকলে শুধু ইমেইল/UID দিয়ে লগইন যাবে। সেট থাকলে পাসওয়ার্ড লাগবে।</small>
+                        <small class="help">পাসওয়ার্ড: কমপক্ষে ৬ অক্ষর, স্পেস/বাংলা নয়। সেট না থাকলে খালি রেখে লগইন (ইমেইল থাকলে কোড যাবে)।</small>
                     </div>
                     <button type="submit" id="loginBtn" class="btn">লগইন করুন <i class="fa-solid fa-arrow-right-long"></i></button>
                 </form>
@@ -169,9 +170,10 @@
                     <div class="ib">
                         <label>পাসওয়ার্ড <span style="font-weight:400;color:#94a3b8;">(ঐচ্ছিক)</span></label>
                         <div class="iw"><i class="fa-solid fa-lock"></i>
-                            <input type="password" id="rPass" class="has-eye" autocomplete="new-password" placeholder="ঐচ্ছিক — পরে প্রোফাইল থেকেও সেট করা যায়" minlength="4">
+                            <input type="password" id="rPass" class="has-eye" autocomplete="new-password" placeholder="কমপক্ষে ৬ অক্ষর (ইংরেজি, স্পেস নয়)" minlength="6" required pattern="[^\s\u0980-\u09FF]{6,}" inputmode="latin">
                             <button type="button" class="eye-btn" data-for="rPass"><i class="fa-regular fa-eye"></i></button>
                         </div>
+                        <small class="help">পাসওয়ার্ড বাধ্যতামূলক: কমপক্ষে ৬ অক্ষর, স্পেস ও বাংলা অক্ষর চলবে না।</small>
                     </div>
                     <button type="submit" id="regBtn" class="btn">ভেরিফিকেশন কোড পাঠান <i class="fa-solid fa-arrow-right"></i></button>
                 </form>
@@ -362,6 +364,21 @@ async function returnToApp() {
 document.getElementById("btnReturnApp").addEventListener("click", returnToApp);
 document.getElementById("btnSwitchAcc").addEventListener("click", () => { PortalStorage.setCur(null); goPanel("login"); });
 
+/* Password: min 6, no space, no Bengali */
+function isValidPassword(pw) {
+    if (!pw || typeof pw !== "string") return false;
+    if (pw.length < 6) return false;
+    if (/\s/.test(pw)) return false;
+    if (/[\u0980-\u09FF]/.test(pw)) return false; // বাংলা
+    return true;
+}
+function passwordError(pw) {
+    if (!pw) return "পাসওয়ার্ড বাধ্যতামূলক (কমপক্ষে ৬ অক্ষর)।";
+    if (/\s/.test(pw)) return "পাসওয়ার্ডে স্পেস দেওয়া যাবে না।";
+    if (/[\u0980-\u09FF]/.test(pw)) return "পাসওয়ার্ডে বাংলা লেখা যাবে না।";
+    if (pw.length < 6) return "পাসওয়ার্ড কমপক্ষে ৬ অক্ষর হতে হবে।";
+    return null;
+}
 /* Password hash (SHA-256) */
 async function hashPass(pw) {
     if (!pw) return null;
@@ -369,6 +386,33 @@ async function hashPass(pw) {
     const buf = await crypto.subtle.digest("SHA-256", data);
     return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,"0")).join("");
 }
+/* অ্যাপ থেকে নাম/লোগো শেয়ার */
+(function applySharedBrand() {
+    try {
+        const q = new URLSearchParams(location.search || "");
+        const name = q.get("app_name") || q.get("appName") || "";
+        const logo = q.get("app_logo") || q.get("appLogo") || "";
+        if (name) {
+            const el = document.getElementById("sharedAppName");
+            if (el) { el.textContent = name; el.style.display = "block"; }
+        }
+        if (logo) {
+            const img = document.getElementById("sharedAppLogo");
+            const box = document.getElementById("sharedLogoBox");
+            if (img && box) { img.src = logo; box.style.display = "flex"; }
+        }
+    } catch (e) {}
+})();
+// ইনপুটে বাংলা/স্পেস আটকানো
+["lPass", "rPass"].forEach(function(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener("input", function() {
+        let v = el.value || "";
+        v = v.replace(/\s+/g, "").replace(/[\u0980-\u09FF]/g, "");
+        if (v !== el.value) el.value = v;
+    });
+});
 
 function userRef(uid, ver) {
     // ফ্ল্যাট প্রাইমারি: KR pro math master / {UID}
@@ -791,14 +835,15 @@ document.getElementById("regForm").addEventListener("submit", async (e) => {
         document.getElementById("uidErr").style.display = "block";
         toast("UID ৮ সংখ্যা, ০ দিয়ে শুরু নয়!", "err"); return;
     }
-    if (pass && pass.length < 4) { toast("পাসওয়ার্ড কমপক্ষে ৪ অক্ষর!", "err"); return; }
+    const perr = passwordError(pass);
+    if (perr) { toast(perr, "err"); return; }
     const uid = "KR-" + rawUid;
     const regBtn = document.getElementById("regBtn");
     setLoading(regBtn, true, "যাচাই...");
     try {
         if (await isUidTaken(uid)) { toast("UID ইতিমধ্যে ব্যবহৃত!", "err"); setLoading(regBtn, false); return; }
         if (await findUserByEmailOrUid(email)) { toast("এই ইমেইলে অ্যাকাউন্ট আছে!", "err"); setLoading(regBtn, false); return; }
-        const password_hash = pass ? await hashPass(pass) : null;
+        const password_hash = await hashPass(pass);
         pending = {
             app: FIREBASE_COLLECTION_NAME, version: APP_VERSION, foundVersion: APP_VERSION,
             user_profile: {
