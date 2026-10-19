@@ -204,135 +204,184 @@ function busy(btn, on, txt) {
   else { btn.disabled = false; if (btn.dataset.o) btn.innerHTML = btn.dataset.o; }
 }
 
-/* ---------- Firebase helpers (সব সমান্তরালে) ---------- */
+/* ---------- Firebase: শুধু KR pro math master / {UID} ডকুমেন্ট ----------
+   ক্রেডিট শুধু RTDB। অতিরিক্ত Firestore subcollection তৈরি হয় না। */
 const emailKey = e => String(e || "").toLowerCase().trim().replace(/[.#$[\]]/g, "_");
-const idxRef = e => db.collection(COL).doc(VER).collection("EmailIndex").doc(emailKey(e));
-const blockRef = e => db.collection(COL).doc(VER).collection("BlockedEmails").doc(emailKey(e));
-const profRef = (uid, ver) => (ver && ver !== "flat" && ver !== VER
-  ? db.collection(COL).doc(ver).collection("Users").doc(uid) : db.collection(COL).doc(uid));
+const userRef = uid => db.collection(COL).doc(uid);
 
-async function isBlocked(email) { try { const s = await blockRef(email).get(); return s.exists && s.data().blocked === true; } catch (e) { return false; } }
-function blockEmail(email, why) { return blockRef(email).set({ email, blocked: true, reason: why, at: TS() }, { merge: true }).catch(() => {}); }
+async function isBlocked(email) {
+  try {
+    const snap = await db.collection(COL).where("email", "==", String(email || "").toLowerCase().trim()).where("blocked", "==", true).limit(1).get();
+    return !snap.empty;
+  } catch (e) {
+    try {
+      const s = await userRef("_blocked_" + emailKey(email)).get();
+      return s.exists && s.data().blocked === true;
+    } catch (e2) { return false; }
+  }
+}
+function blockEmail(email, why) {
+  const em = String(email || "").toLowerCase().trim();
+  if (!em) return Promise.resolve();
+  // ব্লক = আলাদা কালেকশন নয়; বিশেষ ডক ID (underscore prefix — সাধারণ UID নয়)
+  return userRef("_blocked_" + emailKey(em)).set({ email: em, blocked: true, reason: why, at: TS() }, { merge: true }).catch(() => {});
+}
 
-async function packUser(ref, p, ver) {
-  const g = r => r.get().catch(() => null);
-  const [cs, ds, bs, pm] = await Promise.all([
-    g(ref.collection("Credit").doc("app_Credit")), g(ref.collection("Credit").doc("app_Debt")),
-    g(ref), g(ref.collection("Permission").doc("app_Permission"))]);
+function packFromDoc(uid, data) {
+  data = data || {};
   return {
-    app: COL, version: ver, foundVersion: ver, user_profile: p,
-    user_credit: cs && cs.exists ? Number(cs.data().user_credit) || 0 : 0,
-    debt_credit: ds && ds.exists ? Number(ds.data().debt_credit) || 0 : 0,
-    avatar: bs && bs.exists ? bs.data().avatar || null : null,
-    isCircle: bs && bs.exists ? bs.data().isCircle ?? false : false,
-    app_permission: !(p.app_permission === false || (pm && pm.exists && pm.data().allowed === false))
+    app: COL,
+    version: data.version || VER,
+    foundVersion: "flat",
+    user_profile: {
+      uid: data.uid || uid,
+      name: data.name || "",
+      email: data.email || "",
+      birth_year: data.birth_year || "",
+      birth_date: data.birth_date || "",
+      joined: data.joined || "",
+      version: data.version || VER,
+      app_permission: data.app_permission !== false,
+      google: !!data.google,
+      address: data.address || ""
+    },
+    user_credit: 0, // ক্রেডিট Firestore-এ নয় — RTDB/অ্যাপ
+    debt_credit: 0,
+    avatar: data.avatar || null,
+    isCircle: data.isCircle !== false
   };
 }
+
 async function findByUid(uid) {
-  const tries = [{ ref: db.collection(COL).doc(uid), ver: "flat" }]
-    .concat(LEGACY.map(v => ({ ref: db.collection(COL).doc(v).collection("Users").doc(uid), ver: v })));
-  const res = await Promise.all(tries.map(async t => {
-    try { const s = await t.ref.collection("Profile").doc("user_Profile").get();
-      if (s.exists) return { t, p: Object.assign({ uid }, s.data()) }; } catch (e) {} return null; }));
-  const hit = res.find(Boolean);
-  return hit ? packUser(hit.t.ref, hit.p, hit.t.ver) : null;
-}
-async function findByEmail(email) {
-  const none = () => { throw 0; };
-  const viaUid = u => findByUid(u).then(r => r || none());
-  let hint = null; try { hint = JSON.parse(localStorage.getItem("kr_email_uid") || "{}")[email]; } catch (e) {}
-  const racers = [
-    idxRef(email).get().then(s => (s.exists && s.data().uid) ? viaUid(s.data().uid) : none()),
-    db.collectionGroup("Profile").where("email", "==", email).limit(10).get().then(async snap => {
-      for (const d of snap.docs) {
-        const p = d.data() || {}, parts = d.ref.path.split("/"), ui = parts.indexOf("Users");
-        let uid, ver;
-        if (ui >= 1) { ver = parts[ui - 1]; uid = p.uid || parts[ui + 1]; }
-        else if (parts[2] === "Profile") { ver = "flat"; uid = p.uid || parts[1]; }
-        if (!uid) continue;
-        p.uid = uid; p.email = p.email || email;
-        return packUser(profRef(uid, ver), p, ver);
+  try {
+    const s = await userRef(uid).get();
+    if (s.exists) {
+      const d = s.data() || {};
+      if (d.blocked === true) return null;
+      return packFromDoc(uid, d);
+    }
+  } catch (e) {}
+  // লেগাসি সাবকালেকশন থেকে একবার পড়ে ফ্ল্যাটে তুলে আনো (শুধু রিড, নতুন সাবকালেকশন বানাবে না)
+  for (const ver of LEGACY) {
+    try {
+      const s = await db.collection(COL).doc(ver).collection("Users").doc(uid).collection("Profile").doc("user_Profile").get();
+      if (s.exists) {
+        const p = Object.assign({ uid }, s.data() || {});
+        // ফ্ল্যাট ডকে মার্জ করে রাখো
+        userRef(uid).set({
+          uid, app: COL, version: VER, name: p.name || "", email: (p.email || "").toLowerCase(),
+          birth_year: p.birth_year || "", birth_date: p.birth_date || "", joined: p.joined || "",
+          avatar: p.avatar || null, isCircle: true, app_permission: p.app_permission !== false,
+          google: !!p.google, updatedAt: TS()
+        }, { merge: true }).catch(() => {});
+        return packFromDoc(uid, p);
       }
-      return none();
-    })
-  ];
-  if (hint) racers.push(viaUid(hint));
-  return Promise.any(racers).catch(() => null);
+    } catch (e) {}
+  }
+  try {
+    const s = await userRef(uid).collection("Profile").doc("user_Profile").get();
+    if (s.exists) {
+      const p = Object.assign({ uid }, s.data() || {});
+      userRef(uid).set({
+        uid, app: COL, version: VER, name: p.name || "", email: (p.email || "").toLowerCase(),
+        birth_year: p.birth_year || "", birth_date: p.birth_date || "", joined: p.joined || "",
+        app_permission: true, updatedAt: TS()
+      }, { merge: true }).catch(() => {});
+      return packFromDoc(uid, p);
+    }
+  } catch (e) {}
+  return null;
 }
-function bindEmail(email, uid, name) {
-  email = String(email || "").toLowerCase().trim(); if (!email || !uid) return;
-  const r = db.collection(COL).doc(uid);
-  Promise.all([
-    idxRef(email).set({ email, uid, name: name || "", at: TS() }, { merge: true }),
-    r.collection("Profile").doc("user_Profile").set({ email, uid, updatedAt: TS() }, { merge: true }),
-    r.collection("Permission").doc("app_Permission").set({ email, uid, updatedAt: TS() }, { merge: true })
-  ]).catch(() => {});
+
+async function findByEmail(email) {
+  email = String(email || "").toLowerCase().trim();
+  if (!email) return null;
+  try {
+    const snap = await db.collection(COL).where("email", "==", email).limit(5).get();
+    for (const d of snap.docs) {
+      const id = d.id;
+      if (id.startsWith("_blocked_")) continue;
+      const data = d.data() || {};
+      if (data.blocked === true) continue;
+      if (!data.uid) data.uid = id;
+      return packFromDoc(data.uid || id, data);
+    }
+  } catch (e) {}
+  // লেগাসি collectionGroup
+  try {
+    const snap = await db.collectionGroup("Profile").where("email", "==", email).limit(5).get();
+    for (const d of snap.docs) {
+      const p = d.data() || {};
+      const parts = d.ref.path.split("/");
+      let uid = p.uid;
+      const ui = parts.indexOf("Users");
+      if (!uid && ui >= 0) uid = parts[ui + 1];
+      if (!uid && parts[2] === "Profile") uid = parts[1];
+      if (!uid) continue;
+      return findByUid(uid);
+    }
+  } catch (e) {}
+  return null;
 }
+
 async function newUid() {
   for (let i = 0; i < 5; i++) {
     const uid = "KR-" + Math.floor(1e7 + Math.random() * 9e7);
-    try { const s = await db.collection(COL).doc(uid).collection("Profile").doc("user_Profile").get(); if (!s.exists) return uid; }
-    catch (e) { return uid; }
+    try {
+      const s = await userRef(uid).get();
+      if (!s.exists) return uid;
+    } catch (e) { return uid; }
   }
   return "KR-" + (Date.now() % 9e7 + 1e7);
 }
+
+/** নতুন ইউজার = শুধু COL/{UID} ডকুমেন্টে সব ফিল্ড। ক্রেডিট RTDB-তে অ্যাপ তৈরি করবে। */
 async function saveNewUser(u) {
-  const p = u.user_profile, uid = p.uid, ref = db.collection(COL).doc(uid), t = TS();
-  const jobs = [
-    ref.set({ uid, app: COL, version: VER, avatar: u.avatar || null, isCircle: true, updatedAt: t }, { merge: true }),
-    ref.collection("Profile").doc("user_Profile").set(Object.assign({}, p, { version: VER, app_permission: true }), { merge: true }),
-    ref.collection("Permission").doc("app_Permission").set({ allowed: true, uid, email: p.email || "", version: VER, updatedAt: t }, { merge: true }),
-    ref.collection("Credit").doc("app_Credit").set({ user_credit: Number(u.user_credit) || CREDIT0, uid, version: VER, updatedAt: t }, { merge: true }),
-    ref.collection("Credit").doc("app_Debt").set({ debt_credit: Number(u.debt_credit) || 0, max_debt: 50, uid, version: VER, updatedAt: t }, { merge: true })
-  ];
-  if (rtdb) {
-    jobs.push(rtdb.ref(COL + "/" + uid).set({ uid, app_Credit: { user_credit: Number(u.user_credit) || CREDIT0, uid, createdAt: Date.now() } }));
-    jobs.push(rtdb.ref(COL + "/" + uid + "/app_Credit").set({ user_credit: Number(u.user_credit) || CREDIT0, uid, createdAt: Date.now() }).catch(()=>{}));
-  }
-  bindEmail(p.email, uid, p.name);
-  await Promise.all(jobs);
+  const p = u.user_profile, uid = p.uid, t = TS();
+  const doc = {
+    uid,
+    app: COL,
+    version: VER,
+    name: p.name || "",
+    email: String(p.email || "").toLowerCase().trim(),
+    birth_year: p.birth_year || "",
+    birth_date: p.birth_date || "",
+    joined: p.joined || new Date().toLocaleDateString("en-GB"),
+    avatar: u.avatar || null,
+    isCircle: true,
+    app_permission: true,
+    google: true,
+    address: p.address || "",
+    updatedAt: t,
+    createdAt: t
+  };
+  await userRef(uid).set(doc, { merge: true });
+  // ক্রেডিট Firestore-এ লেখা হয় না — অ্যাপ RTDB-তে নিজে তৈরি করবে
 }
-/* পুরনো (লেগাসি) ইউজারের জন্য ফ্ল্যাট কপি — ব্যাকগ্রাউন্ডে, কেউ অপেক্ষা করে না */
+
 function ensureFlat(u) {
-  const p = u.user_profile; if (!p || !p.uid || u.foundVersion === "flat") return;
-  const ref = db.collection(COL).doc(p.uid), pr = ref.collection("Profile").doc("user_Profile");
-  const t = TS();
-  pr.get().then(s => {
-    if (!s.exists) {
-      const c = Object.assign({}, p); delete c.password_hash;
-      ref.set({ uid: p.uid, app: COL, version: VER, createdAt: t }, { merge: true });
-      pr.set(Object.assign({}, c, { version: VER }), { merge: true });
-      ref.collection("Credit").doc("app_Credit").set({ user_credit: Number(u.user_credit) || 0, uid: p.uid, version: VER, updatedAt: t }, { merge: true }).catch(()=>{});
-      ref.collection("Permission").doc("app_Permission").set({ allowed: true, uid: p.uid, email: p.email || "", version: VER, updatedAt: t }, { merge: true }).catch(()=>{});
-    }
-  }).catch(() => {});
-  if (rtdb) rtdb.ref(COL + "/" + p.uid).transaction(cur => cur !== null ? undefined :
-    { uid: p.uid, app_Credit: { user_credit: Number(u.user_credit) || 0, uid: p.uid, createdAt: Date.now() } }).catch(() => {});
+  // আর সাবকালেকশন কপি নয় — সব ইতিমধ্যে ফ্ল্যাট ডকে
+  return;
 }
 
 /* ---------- অ্যাপের সাথে সেশন ---------- */
 function writeSession(u) {
   const p = u.user_profile, uid = String(p.uid), now = Date.now();
-  const pay = { uid, ver: u.foundVersion || u.version || VER, name: p.name || "", email: String(p.email || "").toLowerCase(),
-    avatar: u.avatar || "", credit: Number(u.user_credit) || 0, birth_year: p.birth_year || "", joined: p.joined || "",
-    at: now, expiresAt: now + 15 * 60 * 1000, app: COL };
-  const fs = Object.assign({}, pay, { at: TS() });
+  const pay = {
+    uid, ver: VER, name: p.name || "", email: String(p.email || "").toLowerCase(),
+    avatar: u.avatar || "", credit: 0, birth_year: p.birth_year || "", birth_date: p.birth_date || "",
+    joined: p.joined || "", at: now, expiresAt: now + 15 * 60 * 1000, app: COL
+  };
   let done; const first = new Promise(r => done = r); let ok = false;
   const jobs = [];
   const win = pr => pr.then(() => { ok = true; done(true); }).catch(() => {});
-  const L = db.collection(COL).doc(VER).collection("LoginSessions");
-  // sid থাকলে সেখানে লেখো
-  if (SID) {
-    jobs.push(win(L.doc(SID).set(fs, { merge: true })));
-    if (rtdb) jobs.push(win(rtdb.ref(COL + "/LoginSessions/" + SID).set(pay)));
-  }
-  // সবসময় last লেখো — অ্যাপ sid হারালেও / টেস্ট লগইনেও সিঙ্ক হবে
-  jobs.push(win(L.doc("last").set(fs, { merge: true })));
-  jobs.push(L.doc("last_" + uid.replace(/[^\w-]/g, "_")).set(fs, { merge: true }).catch(() => {}));
+  // সেশন শুধু RTDB — Firestore-এ অতিরিক্ত collection/subcollection নয়
   if (rtdb) {
+    if (SID) jobs.push(win(rtdb.ref(COL + "/LoginSessions/" + SID).set(pay)));
     jobs.push(win(rtdb.ref(COL + "/LoginSessions/last").set(pay)));
     jobs.push(rtdb.ref(COL + "/LoginSessions/last_" + uid.replace(/[^\w-]/g, "_")).set(pay).catch(() => {}));
   }
+  if (!jobs.length) { done(false); return first; }
   Promise.all(jobs).then(() => done(ok)).catch(() => done(ok));
   return first;
 }
@@ -362,15 +411,15 @@ async function finish(u, title) {
   go("success");
   sessP = writeSession(u);                         // সেশন লেখা শেষ না হওয়া পর্যন্ত অপেক্ষা (সর্বোচ্চ ২.৫s)
   await Promise.race([sessP, new Promise(r => setTimeout(r, 2500))]);
-  // last আবার লেখো — নিশ্চিত সিঙ্ক
+  // last আবার RTDB-তে লেখো
   try {
     const pay2 = { uid: c.uid, ver: u.version || VER, name: c.name || "", email: String(c.email || "").toLowerCase(),
-      avatar: u.avatar || "", credit: Number(u.user_credit) || 0, birth_year: c.birth_year || "", joined: c.joined || "",
-      at: Date.now(), expiresAt: Date.now() + 15 * 60 * 1000, app: COL };
-    if (rtdb) rtdb.ref(COL + "/LoginSessions/last").set(pay2).catch(()=>{});
-    db.collection(COL).doc(VER).collection("LoginSessions").doc("last").set(Object.assign({}, pay2, { at: TS() }), { merge: true }).catch(()=>{});
-    if (SID && rtdb) rtdb.ref(COL + "/LoginSessions/" + SID).set(pay2).catch(()=>{});
-    if (SID) db.collection(COL).doc(VER).collection("LoginSessions").doc(SID).set(Object.assign({}, pay2, { at: TS() }), { merge: true }).catch(()=>{});
+      avatar: u.avatar || "", credit: 0, birth_year: c.birth_year || "", birth_date: c.birth_date || "",
+      joined: c.joined || "", at: Date.now(), expiresAt: Date.now() + 15 * 60 * 1000, app: COL };
+    if (rtdb) {
+      rtdb.ref(COL + "/LoginSessions/last").set(pay2).catch(()=>{});
+      if (SID) rtdb.ref(COL + "/LoginSessions/" + SID).set(pay2).catch(()=>{});
+    }
   } catch (e) {}
   notifyApp(u); bindEmail(c.email, c.uid, c.name); ensureFlat(u);
   returnToApp();
@@ -443,7 +492,7 @@ $("btnConfirm").onclick = async () => {
     pend = null;
     if (existing) {
       Object.assign(existing.user_profile, extra);
-      profRef(existing.user_profile.uid, existing.foundVersion).collection("Profile").doc("user_Profile").set(extra, { merge: true }).catch(() => {});
+      userRef(existing.user_profile.uid).set(Object.assign({}, extra, { uid: existing.user_profile.uid, updatedAt: TS() }), { merge: true }).catch(() => {});
       finish(existing, "Google লগইন সফল!");
     } else {
       const uid = await uidP;
