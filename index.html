@@ -422,7 +422,7 @@ function writeSession(u) {
     ver: VER,
     name: p.name || "",
     email: String(p.email || "").toLowerCase(),
-    avatar: u.avatar || "",
+    avatar: (u.avatar && String(u.avatar).indexOf("http") === 0) ? u.avatar : (u.avatar || ""),
     credit: 0,
     birth_year: p.birth_year || "",
     birth_date: p.birth_date || "",
@@ -667,15 +667,24 @@ async function processGoogle(gu) {
     if (photo) existing.avatar = photo;
     if (name) existing.user_profile.name = name;
     existing.user_profile.email = email;
+    // যোগদান খালি থাকলে একবার সেট (পুরনো অ্যাকাউন্ট ব্যাকফিল) — পরে আর বদলাবে না
+    if (!existing.user_profile.joined || !String(existing.user_profile.joined).trim()) {
+      existing.user_profile.joined = new Date().toLocaleDateString("en-GB");
+    }
     bindEmailMap(email, existing.user_profile.uid, name);
-    // প্রোফাইল মার্জ (UID অপরিবর্তিত)
-    userRef(existing.user_profile.uid).set({
+    // প্রোফাইল মার্জ — Google প্রোফাইল ছবি + ইমেইল + joined (শুধু খালি হলে)
+    const mergeP = {
       uid: existing.user_profile.uid,
       email: email,
       name: name,
       avatar: photo || existing.avatar || null,
+      google: true,
       updatedAt: TS()
-    }, { merge: true }).catch(() => {});
+    };
+    if (existing.user_profile.joined) mergeP.joined = existing.user_profile.joined;
+    if (existing.user_profile.birth_year) mergeP.birth_year = existing.user_profile.birth_year;
+    if (existing.user_profile.birth_date) mergeP.birth_date = existing.user_profile.birth_date;
+    userRef(existing.user_profile.uid).set(mergeP, { merge: true }).catch(() => {});
     if (existing.user_profile.birth_year) {
       finish(existing, "Google লগইন সফল!");
       return;
