@@ -462,19 +462,25 @@ async function finish(u, title) {
   u.version = VER; u.app = COL; u.foundVersion = "flat";
   const c = Object.assign({}, u.user_profile); delete c.password_hash;
   if (c.email) c.email = String(c.email).toLowerCase().trim();
-  if (!c.joined) c.joined = new Date().toLocaleDateString("en-GB");
+  // যোগদান তারিখ শুধু প্রথম অ্যাকাউন্ট তৈরির সময় — পরে আর বদলাবে না
+  if (!c.joined || !String(c.joined).trim()) {
+    c.joined = new Date().toLocaleDateString("en-GB");
+  }
   c.version = VER;
   u.user_profile = c; CUR = u;
-  // Firestore ফ্ল্যাট ডক আপডেট (জন্ম/যোগদান সহ)
+  // Firestore ফ্ল্যাট ডক আপডেট — joined শুধু খালি থাকলে লিখবে (merge + শর্ত)
   try {
-    await userRef(c.uid).set({
+    const patch = {
       uid: c.uid, app: COL, version: VER,
       name: c.name || "", email: c.email || "",
       birth_year: c.birth_year || "", birth_date: c.birth_date || "",
-      joined: c.joined, avatar: u.avatar || null, isCircle: true,
+      avatar: u.avatar || null, isCircle: true,
       app_permission: true, google: true, address: c.address || "",
       updatedAt: TS()
-    }, { merge: true });
+    };
+    // joined শুধু নতুন/খালি হলে সেট — পুরনো তারিখ ওভাররাইট নয়
+    if (c.joined) patch.joined = c.joined;
+    await userRef(c.uid).set(patch, { merge: true });
   } catch (e) {}
   try { localStorage.setItem("kr_cur_user", JSON.stringify(u)); localStorage.setItem("kr_user_uid", c.uid);
     if (c.email) { const m = JSON.parse(localStorage.getItem("kr_email_uid") || "{}"); m[c.email] = c.uid; localStorage.setItem("kr_email_uid", JSON.stringify(m)); } } catch (e) {}
@@ -581,12 +587,20 @@ $("btnConfirm").onclick = async () => {
     pend = null;
     if (pendCopy.existing) {
       const ex = pendCopy.existing;
+      // পুরনো অ্যাকাউন্ট — joined শুধু না থাকলে; birth আপডেট
       if (!ex.user_profile.joined) ex.user_profile.joined = joinedNow;
-      Object.assign(ex.user_profile, extra);
-      await userRef(ex.user_profile.uid).set(Object.assign({
+      const birthOnly = { birth_year: s.year };
+      if (s.date) birthOnly.birth_date = s.date;
+      Object.assign(ex.user_profile, birthOnly);
+      if (!ex.user_profile.joined) ex.user_profile.joined = joinedNow;
+      const mergeDoc = {
         uid: ex.user_profile.uid, name: ex.user_profile.name || name, email: email || ex.user_profile.email || "",
-        version: VER, app: COL, app_permission: true, google: true, updatedAt: TS()
-      }, extra), { merge: true });
+        version: VER, app: COL, app_permission: true, google: true, updatedAt: TS(),
+        birth_year: s.year
+      };
+      if (s.date) mergeDoc.birth_date = s.date;
+      if (!ex.user_profile.joined || ex.user_profile.joined === joinedNow) mergeDoc.joined = ex.user_profile.joined || joinedNow;
+      await userRef(ex.user_profile.uid).set(mergeDoc, { merge: true });
       await finish(ex, "Google লগইন সফল!");
     } else {
       // নতুন তৈরির আগে আবার ইমেইল চেক — থাকলে পুরনো UID
@@ -595,15 +609,22 @@ $("btnConfirm").onclick = async () => {
       if (again && again.user_profile && again.user_profile.uid) {
         const ex = again;
         if (!ex.user_profile.joined) ex.user_profile.joined = joinedNow;
-        Object.assign(ex.user_profile, extra);
+        const birthOnly = { birth_year: s.year };
+        if (s.date) birthOnly.birth_date = s.date;
+        Object.assign(ex.user_profile, birthOnly);
         if (photo) ex.avatar = photo;
         if (name) ex.user_profile.name = name;
         ex.user_profile.email = email;
-        await userRef(ex.user_profile.uid).set(Object.assign({
+        const mergeDoc = {
           uid: ex.user_profile.uid, name: name, email: email,
           version: VER, app: COL, app_permission: true, google: true,
-          avatar: photo || ex.avatar || null, updatedAt: TS()
-        }, extra), { merge: true });
+          avatar: photo || ex.avatar || null, updatedAt: TS(),
+          birth_year: s.year
+        };
+        if (s.date) mergeDoc.birth_date = s.date;
+        // joined শুধু না থাকলে
+        if (!ex.user_profile.joined) mergeDoc.joined = joinedNow;
+        await userRef(ex.user_profile.uid).set(mergeDoc, { merge: true });
         bindEmailMap(email, ex.user_profile.uid, name);
         await finish(ex, "Google লগইন সফল!");
       } else {
