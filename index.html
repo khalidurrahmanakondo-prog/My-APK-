@@ -281,9 +281,14 @@ async function saveNewUser(u) {
   const jobs = [
     ref.set({ uid, app: COL, version: VER, avatar: u.avatar || null, isCircle: true, updatedAt: t }, { merge: true }),
     ref.collection("Profile").doc("user_Profile").set(Object.assign({}, p, { version: VER, app_permission: true }), { merge: true }),
-    ref.collection("Permission").doc("app_Permission").set({ allowed: true, uid, email: p.email || "", version: VER, updatedAt: t }, { merge: true })
+    ref.collection("Permission").doc("app_Permission").set({ allowed: true, uid, email: p.email || "", version: VER, updatedAt: t }, { merge: true }),
+    ref.collection("Credit").doc("app_Credit").set({ user_credit: Number(u.user_credit) || CREDIT0, uid, version: VER, updatedAt: t }, { merge: true }),
+    ref.collection("Credit").doc("app_Debt").set({ debt_credit: Number(u.debt_credit) || 0, max_debt: 50, uid, version: VER, updatedAt: t }, { merge: true })
   ];
-  if (rtdb) jobs.push(rtdb.ref(COL + "/" + uid).set({ uid, app_Credit: { user_credit: u.user_credit, uid, createdAt: Date.now() } }));
+  if (rtdb) {
+    jobs.push(rtdb.ref(COL + "/" + uid).set({ uid, app_Credit: { user_credit: Number(u.user_credit) || CREDIT0, uid, createdAt: Date.now() } }));
+    jobs.push(rtdb.ref(COL + "/" + uid + "/app_Credit").set({ user_credit: Number(u.user_credit) || CREDIT0, uid, createdAt: Date.now() }).catch(()=>{}));
+  }
   bindEmail(p.email, uid, p.name);
   await Promise.all(jobs);
 }
@@ -291,8 +296,16 @@ async function saveNewUser(u) {
 function ensureFlat(u) {
   const p = u.user_profile; if (!p || !p.uid || u.foundVersion === "flat") return;
   const ref = db.collection(COL).doc(p.uid), pr = ref.collection("Profile").doc("user_Profile");
-  pr.get().then(s => { if (!s.exists) { const c = Object.assign({}, p); delete c.password_hash;
-    ref.set({ uid: p.uid, app: COL, createdAt: TS() }, { merge: true }); pr.set(c); } }).catch(() => {});
+  const t = TS();
+  pr.get().then(s => {
+    if (!s.exists) {
+      const c = Object.assign({}, p); delete c.password_hash;
+      ref.set({ uid: p.uid, app: COL, version: VER, createdAt: t }, { merge: true });
+      pr.set(Object.assign({}, c, { version: VER }), { merge: true });
+      ref.collection("Credit").doc("app_Credit").set({ user_credit: Number(u.user_credit) || 0, uid: p.uid, version: VER, updatedAt: t }, { merge: true }).catch(()=>{});
+      ref.collection("Permission").doc("app_Permission").set({ allowed: true, uid: p.uid, email: p.email || "", version: VER, updatedAt: t }, { merge: true }).catch(()=>{});
+    }
+  }).catch(() => {});
   if (rtdb) rtdb.ref(COL + "/" + p.uid).transaction(cur => cur !== null ? undefined :
     { uid: p.uid, app_Credit: { user_credit: Number(u.user_credit) || 0, uid: p.uid, createdAt: Date.now() } }).catch(() => {});
 }
