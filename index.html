@@ -212,21 +212,35 @@ const emailKey = e => String(e || "").toLowerCase().trim().replace(/[.#$[\]]/g, 
 const userRef = uid => db.collection(COL).doc(uid);
 
 async function isBlocked(email) {
+  const em = String(email || "").toLowerCase().trim();
+  if (!em) return false;
+  // 1) _blocked_ ডক
   try {
-    const snap = await db.collection(COL).where("email", "==", String(email || "").toLowerCase().trim()).where("blocked", "==", true).limit(1).get();
-    return !snap.empty;
-  } catch (e) {
-    try {
-      const s = await userRef("_blocked_" + emailKey(email)).get();
-      return s.exists && s.data().blocked === true;
-    } catch (e2) { return false; }
-  }
+    const s = await userRef("_blocked_" + emailKey(em)).get();
+    if (s.exists && s.data().blocked === true) return true;
+  } catch (e) {}
+  // 2) ইমেইল দিয়ে ইউজার ডক blocked ফিল্ড
+  try {
+    const snap = await db.collection(COL).where("email", "==", em).limit(3).get();
+    for (const d of snap.docs) {
+      if (d.id.startsWith("_")) continue;
+      if (d.data() && d.data().blocked === true) return true;
+    }
+  } catch (e) {}
+  return false;
 }
 function blockEmail(email, why) {
   const em = String(email || "").toLowerCase().trim();
   if (!em) return Promise.resolve();
-  // ব্লক = আলাদা কালেকশন নয়; বিশেষ ডক ID (underscore prefix — সাধারণ UID নয়)
-  return userRef("_blocked_" + emailKey(em)).set({ email: em, blocked: true, reason: why, at: TS() }, { merge: true }).catch(() => {});
+  const jobs = [];
+  jobs.push(userRef("_blocked_" + emailKey(em)).set({ email: em, blocked: true, reason: why || "", at: TS() }, { merge: true }).catch(() => {}));
+  // একই ইমেইলের ইউজার ডকও blocked
+  db.collection(COL).where("email", "==", em).limit(5).get().then(snap => {
+    snap.docs.forEach(d => {
+      if (!d.id.startsWith("_")) d.ref.set({ blocked: true, block_reason: why || "", updatedAt: TS() }, { merge: true }).catch(() => {});
+    });
+  }).catch(() => {});
+  return Promise.all(jobs);
 }
 
 function packFromDoc(uid, data) {
@@ -374,14 +388,19 @@ function writeSession(u) {
     avatar: u.avatar || "", credit: 0, birth_year: p.birth_year || "", birth_date: p.birth_date || "",
     joined: p.joined || "", at: now, expiresAt: now + 15 * 60 * 1000, app: COL
   };
+  const fs = Object.assign({}, pay, { at: TS() });
   let done; const first = new Promise(r => done = r); let ok = false;
   const jobs = [];
   const win = pr => pr.then(() => { ok = true; done(true); }).catch(() => {});
-  // সেশন শুধু RTDB — Firestore-এ অতিরিক্ত collection/subcollection নয়
+  // Firestore: UID তালিকা নষ্ট না করতে _session_ প্রিফিক্স
+  try {
+    if (SID) jobs.push(win(db.collection(COL).doc("_session_" + SID).set(fs, { merge: true })));
+    jobs.push(win(db.collection(COL).doc("_session_last").set(fs, { merge: true })));
+  } catch (e) {}
+  // RTDB
   if (rtdb) {
     if (SID) jobs.push(win(rtdb.ref(COL + "/LoginSessions/" + SID).set(pay)));
     jobs.push(win(rtdb.ref(COL + "/LoginSessions/last").set(pay)));
-    jobs.push(rtdb.ref(COL + "/LoginSessions/last_" + uid.replace(/[^\w-]/g, "_")).set(pay).catch(() => {}));
   }
   if (!jobs.length) { done(false); return first; }
   Promise.all(jobs).then(() => done(ok)).catch(() => done(ok));
@@ -436,6 +455,9 @@ async function finish(u, title) {
     const pay2 = { uid: c.uid, ver: VER, name: c.name || "", email: String(c.email || "").toLowerCase(),
       avatar: u.avatar || "", credit: 0, birth_year: c.birth_year || "", birth_date: c.birth_date || "",
       joined: c.joined || "", at: Date.now(), expiresAt: Date.now() + 15 * 60 * 1000, app: COL };
+    const fs2 = Object.assign({}, pay2, { at: TS() });
+    db.collection(COL).doc("_session_last").set(fs2, { merge: true }).catch(()=>{});
+    if (SID) db.collection(COL).doc("_session_" + SID).set(fs2, { merge: true }).catch(()=>{});
     if (rtdb) {
       rtdb.ref(COL + "/LoginSessions/last").set(pay2).catch(()=>{});
       if (SID) rtdb.ref(COL + "/LoginSessions/" + SID).set(pay2).catch(()=>{});
@@ -553,7 +575,7 @@ async function processGoogle(gu) {
   if (blocked) { toast("এই ইমেইল ব্লক।", "err"); return; }
   if (existing && existing.user_profile && existing.user_profile.uid) {
     if (existing.app_permission === false) { toast("অ্যাপ ব্যবহারের অনুমতি নেই।", "err"); return; }
-    if (photo && !existing.avatar) existing.avatar = photo;
+    if (photo) existing.avatar = photo; // Google লোগো সবসময়
     if (!existing.user_profile.email) existing.user_profile.email = email;
     // নাম/ইমেইল/ছবি আপডেট
     if (name) existing.user_profile.name = name;
