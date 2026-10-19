@@ -181,8 +181,8 @@ const db = firebase.firestore(), auth = firebase.auth();
 let rtdb = null; try { rtdb = firebase.database(); } catch (e) {}
 
 /* শুধু এই কালেকশনে ইউজার ডক: COL/{UID}
-   ফিল্ড শুধু: uid, name, email, birth_year, birth_date, joined, avatar
-   বাড়তি কালেকশন/ডক/অ্যাপ-নাম ফিল্ড নেই */
+   ফিল্ড: uid, name, email, birth_year, birth_date, joined, avatar, app_permission
+   _session_* ডক তৈরি হয় না — একই ইমেইল বারবার লগইনেও নতুন সেশন নেই */
 const COL = "KR pro math master";
 const MIN_AGE = 5;
 const TS = () => firebase.firestore.FieldValue.serverTimestamp();
@@ -222,7 +222,8 @@ function packUser(uid, data) {
     birth_year: data.birth_year || "",
     birth_date: data.birth_date || "",
     joined: data.joined || "",
-    avatar: data.avatar || null
+    avatar: data.avatar || null,
+    app_permission: data.app_permission !== false // এক পারমিশন — false না হলে true
   };
 }
 
@@ -295,14 +296,18 @@ async function saveUserProfile(p, isNew) {
     email: String(p.email || "").toLowerCase().trim(),
     birth_year: p.birth_year || "",
     birth_date: p.birth_date || "",
-    avatar: p.avatar || null
+    avatar: p.avatar || null,
+    app_permission: p.app_permission !== false
   };
   // অ্যাকাউন্ট তৈরির তারিখ শুধু নতুন বা খালি থাকলে
   if (isNew || !p.joined) {
     doc.joined = p.joined || new Date().toLocaleDateString("en-GB");
     p.joined = doc.joined;
-  } else {
-    // পুরনো joined রাখতে merge-এ লিখব না — শুধু অন্য ফিল্ড
+  }
+  // এক পারমিশন — নতুন অ্যাকাউন্টে true; পুরনোতে merge দিয়ে থাকলে অক্ষুণ্ণ
+  if (isNew) {
+    doc.app_permission = true;
+    p.app_permission = true;
   }
   // set merge: joined না দিলে পুরনো মান অক্ষুণ্ণ
   await userRef(uid).set(doc, { merge: true });
@@ -321,7 +326,9 @@ async function saveUserProfile(p, isNew) {
   return p;
 }
 
-/* অ্যাপ হ্যান্ডঅফ — সেশন (অস্থায়ী, ইউজার প্রোফাইল নয়) */
+/* অ্যাপ হ্যান্ডঅফ — Firestore-এ কোনো _session_ ডক তৈরি হয় না
+   একই ইমেইল বারবার লগইন করলেও নতুন সেশন ডকুমেন্ট হবে না।
+   অ্যাপ localStorage + postMessage + BroadcastChannel দিয়ে লগইন ধরে। */
 function writeSession(p) {
   const uid = String(p.uid);
   const now = Date.now();
@@ -333,18 +340,19 @@ function writeSession(p) {
     birth_year: p.birth_year || "",
     birth_date: p.birth_date || "",
     joined: p.joined || "",
+    app_permission: p.app_permission !== false,
     at: now,
     expiresAt: now + 30 * 60 * 1000
   };
+  // শুধু localStorage — Firebase-এ সেশন ডক নেই
+  try {
+    localStorage.setItem("kr_login_session", JSON.stringify(pay));
+    localStorage.setItem("kr_user_uid", uid);
+  } catch (e) {}
+  // RTDB-তে একই পাথ overwrite (নতুন চাইল্ড নয়) — অ্যাপ চাইলে পড়তে পারে
   const jobs = [];
-  // অ্যাপ যেন লগইন ধরতে পারে — শুধু সেশন কী
-  jobs.push(db.collection(COL).doc("_session_last").set(Object.assign({}, pay, { at: TS() }), { merge: true }));
-  if (SID) {
-    jobs.push(db.collection(COL).doc("_session_" + SID).set(Object.assign({}, pay, { at: TS() }), { merge: true }));
-  }
   if (rtdb) {
     jobs.push(rtdb.ref(COL + "/LoginSessions/last").set(pay));
-    if (SID) jobs.push(rtdb.ref(COL + "/LoginSessions/" + SID).set(pay));
   }
   return Promise.all(jobs.map(j => Promise.resolve(j).catch(e => { console.error(e); return null; })));
 }
@@ -380,7 +388,8 @@ async function finish(p, title) {
       const wrap = {
         user_profile: {
           uid: p.uid, name: p.name, email: p.email,
-          birth_year: p.birth_year, birth_date: p.birth_date, joined: p.joined
+          birth_year: p.birth_year, birth_date: p.birth_date, joined: p.joined,
+          app_permission: p.app_permission !== false
         },
         avatar: p.avatar
       };
@@ -621,6 +630,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (e.code && e.code !== "auth/null-user") toast(gErr(e), "err");
   }
 });
-</script></script>
+</script>
 </body>
 </html>
