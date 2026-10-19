@@ -422,7 +422,7 @@ function writeSession(u) {
     ver: VER,
     name: p.name || "",
     email: String(p.email || "").toLowerCase(),
-    avatar: (u.avatar && String(u.avatar).indexOf("http") === 0) ? u.avatar : (u.avatar || ""),
+    avatar: u.avatar || "",
     credit: 0,
     birth_year: p.birth_year || "",
     birth_date: p.birth_date || "",
@@ -459,16 +459,17 @@ function returnToApp() {
 async function finish(u, title) {
   if (window._krFinishing) return;
   window._krFinishing = true;
+  try {
   u.version = VER; u.app = COL; u.foundVersion = "flat";
   const c = Object.assign({}, u.user_profile); delete c.password_hash;
   if (c.email) c.email = String(c.email).toLowerCase().trim();
-  // যোগদান তারিখ শুধু প্রথম অ্যাকাউন্ট তৈরির সময় — পরে আর বদলাবে না
+  // যোগদান: শুধু খালি হলে সেট — পুরনো তারিখ রাখো
   if (!c.joined || !String(c.joined).trim()) {
     c.joined = new Date().toLocaleDateString("en-GB");
   }
   c.version = VER;
   u.user_profile = c; CUR = u;
-  // Firestore ফ্ল্যাট ডক আপডেট — joined শুধু খালি থাকলে লিখবে (merge + শর্ত)
+  // Firestore — ইমেইল + ছবি + জন্ম সবসময়; joined মার্জ (খালি ওভাররাইট নয়, মান থাকলে লিখ)
   try {
     const patch = {
       uid: c.uid, app: COL, version: VER,
@@ -478,10 +479,9 @@ async function finish(u, title) {
       app_permission: true, google: true, address: c.address || "",
       updatedAt: TS()
     };
-    // joined শুধু নতুন/খালি হলে সেট — পুরনো তারিখ ওভাররাইট নয়
     if (c.joined) patch.joined = c.joined;
     await userRef(c.uid).set(patch, { merge: true });
-  } catch (e) {}
+  } catch (e) { console.error("finish save", e); }
   try { localStorage.setItem("kr_cur_user", JSON.stringify(u)); localStorage.setItem("kr_user_uid", c.uid);
     if (c.email) { const m = JSON.parse(localStorage.getItem("kr_email_uid") || "{}"); m[c.email] = c.uid; localStorage.setItem("kr_email_uid", JSON.stringify(m)); } } catch (e) {}
   $("okTitle").textContent = title || "লগইন সফল!";
@@ -509,6 +509,13 @@ async function finish(u, title) {
   if (c.email) bindEmailMap(c.email, c.uid, c.name || "");
   notifyApp(u);
   returnToApp();
+  } catch (errFinish) {
+    console.error(errFinish);
+    try { toast("লগইন শেষ করতে সমস্যা। আবার চেষ্টা করুন।", "err"); } catch (e) {}
+  } finally {
+    // ৩ সেকেন্ড পর আবার লগইন চেষ্টা চালানো যাবে
+    setTimeout(function() { window._krFinishing = false; }, 3000);
+  }
 }
 $("btnReturn").onclick = () => { if (CUR) notifyApp(CUR); returnToApp(); };
 
@@ -516,7 +523,7 @@ $("btnReturn").onclick = () => { if (CUR) notifyApp(CUR); returnToApp(); };
 const CY = new Date().getFullYear();
 let selYear = null, pend = null;
 const F = ["gDay", "gMonth", "gYear"];
-$("btnSwitchAcc").onclick = () => { CUR = null; try { localStorage.removeItem("kr_cur_user"); } catch (e) {} go("login"); };
+$("btnSwitchAcc").onclick = () => { CUR = null; window._krFinishing = false; window._krConfirmBusy = false; try { localStorage.removeItem("kr_cur_user"); } catch (e) {} go("login"); };
 (function () {
   const g = $("grid");
   for (let y = CY; y >= CY - 100; y--) {
@@ -581,25 +588,27 @@ $("btnConfirm").onclick = async () => {
   busy(btn, true, "সেভ হচ্ছে…");
   try {
     const joinedNow = new Date().toLocaleDateString("en-GB");
-    const extra = { birth_year: s.year, joined: joinedNow };
-    if (s.date) extra.birth_date = s.date;
     const pendCopy = pend;
     pend = null;
     if (pendCopy.existing) {
       const ex = pendCopy.existing;
-      // পুরনো অ্যাকাউন্ট — joined শুধু না থাকলে; birth আপডেট
+      // জন্ম আপডেট; joined শুধু না থাকলে
       if (!ex.user_profile.joined) ex.user_profile.joined = joinedNow;
-      const birthOnly = { birth_year: s.year };
-      if (s.date) birthOnly.birth_date = s.date;
-      Object.assign(ex.user_profile, birthOnly);
-      if (!ex.user_profile.joined) ex.user_profile.joined = joinedNow;
+      ex.user_profile.birth_year = s.year;
+      if (s.date) ex.user_profile.birth_date = s.date;
+      if (photo) ex.avatar = photo;
+      if (name) ex.user_profile.name = name;
+      if (email) ex.user_profile.email = email;
       const mergeDoc = {
-        uid: ex.user_profile.uid, name: ex.user_profile.name || name, email: email || ex.user_profile.email || "",
-        version: VER, app: COL, app_permission: true, google: true, updatedAt: TS(),
-        birth_year: s.year
+        uid: ex.user_profile.uid,
+        name: ex.user_profile.name || name || "",
+        email: email || ex.user_profile.email || "",
+        version: VER, app: COL, app_permission: true, google: true,
+        birth_year: s.year, updatedAt: TS(),
+        avatar: photo || ex.avatar || null
       };
       if (s.date) mergeDoc.birth_date = s.date;
-      if (!ex.user_profile.joined || ex.user_profile.joined === joinedNow) mergeDoc.joined = ex.user_profile.joined || joinedNow;
+      if (ex.user_profile.joined) mergeDoc.joined = ex.user_profile.joined;
       await userRef(ex.user_profile.uid).set(mergeDoc, { merge: true });
       await finish(ex, "Google লগইন সফল!");
     } else {
@@ -609,9 +618,8 @@ $("btnConfirm").onclick = async () => {
       if (again && again.user_profile && again.user_profile.uid) {
         const ex = again;
         if (!ex.user_profile.joined) ex.user_profile.joined = joinedNow;
-        const birthOnly = { birth_year: s.year };
-        if (s.date) birthOnly.birth_date = s.date;
-        Object.assign(ex.user_profile, birthOnly);
+        ex.user_profile.birth_year = s.year;
+        if (s.date) ex.user_profile.birth_date = s.date;
         if (photo) ex.avatar = photo;
         if (name) ex.user_profile.name = name;
         ex.user_profile.email = email;
@@ -622,13 +630,14 @@ $("btnConfirm").onclick = async () => {
           birth_year: s.year
         };
         if (s.date) mergeDoc.birth_date = s.date;
-        // joined শুধু না থাকলে
-        if (!ex.user_profile.joined) mergeDoc.joined = joinedNow;
+        if (ex.user_profile.joined) mergeDoc.joined = ex.user_profile.joined;
         await userRef(ex.user_profile.uid).set(mergeDoc, { merge: true });
         bindEmailMap(email, ex.user_profile.uid, name);
         await finish(ex, "Google লগইন সফল!");
       } else {
         const uid = await (pendCopy.uidP || newUid());
+        const extra = { birth_year: s.year, joined: joinedNow };
+        if (s.date) extra.birth_date = s.date;
         const u = { app: COL, version: VER, foundVersion: "flat",
           user_profile: Object.assign({ name, email, uid, version: VER, app_permission: true, google: true }, extra),
           user_credit: CREDIT0, debt_credit: 0, avatar: photo, isCircle: true };
@@ -643,6 +652,8 @@ $("btnConfirm").onclick = async () => {
     busy(btn, false);
     window._krConfirmBusy = false;
     refresh();
+  } finally {
+    window._krConfirmBusy = false;
   }
 };
 
@@ -663,16 +674,19 @@ async function processGoogle(gu) {
   }
   if (existing && existing.user_profile && existing.user_profile.uid) {
     // একই ইমেইল → একই UID — নতুন UID বানাবে না
-    if (existing.app_permission === false) { toast("অ্যাপ ব্যবহারের অনুমতি নেই।", "err"); return; }
+    const perm = (existing.user_profile && existing.user_profile.app_permission);
+    if (perm === false || existing.app_permission === false) {
+      toast("অ্যাপ ব্যবহারের অনুমতি নেই।", "err"); return;
+    }
     if (photo) existing.avatar = photo;
     if (name) existing.user_profile.name = name;
     existing.user_profile.email = email;
-    // যোগদান খালি থাকলে একবার সেট (পুরনো অ্যাকাউন্ট ব্যাকফিল) — পরে আর বদলাবে না
+    // যোগদান খালি হলে একবার ব্যাকফিল
     if (!existing.user_profile.joined || !String(existing.user_profile.joined).trim()) {
       existing.user_profile.joined = new Date().toLocaleDateString("en-GB");
     }
     bindEmailMap(email, existing.user_profile.uid, name);
-    // প্রোফাইল মার্জ — Google প্রোফাইল ছবি + ইমেইল + joined (শুধু খালি হলে)
+    // প্রোফাইল মার্জ (UID অপরিবর্তিত) — ছবি/ইমেইল/জন্ম
     const mergeP = {
       uid: existing.user_profile.uid,
       email: email,
@@ -684,7 +698,7 @@ async function processGoogle(gu) {
     if (existing.user_profile.joined) mergeP.joined = existing.user_profile.joined;
     if (existing.user_profile.birth_year) mergeP.birth_year = existing.user_profile.birth_year;
     if (existing.user_profile.birth_date) mergeP.birth_date = existing.user_profile.birth_date;
-    userRef(existing.user_profile.uid).set(mergeP, { merge: true }).catch(() => {});
+    userRef(existing.user_profile.uid).set(mergeP, { merge: true }).catch(function() {});
     if (existing.user_profile.birth_year) {
       finish(existing, "Google লগইন সফল!");
       return;
@@ -707,7 +721,7 @@ function gErr(e) {
   return "Google ব্যর্থ: " + (e.message || c);
 }
 $("btnGoogle").onclick = async () => {
-  if (window._krGoogleBusy || window._krFinishing) return;
+  if (window._krGoogleBusy) return;
   window._krGoogleBusy = true;
   const b = $("btnGoogle");
   busy(b, true, "Google খুলছে…");
