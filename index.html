@@ -48,8 +48,10 @@
         .ib input:disabled { opacity:.35; }
         .help { font-size:11px; color:var(--muted); margin-top:4px; display:block; }
         .btn { width:100%; padding:13px; background:linear-gradient(135deg,var(--green-dark),var(--green)); color:#fff; border:none; border-radius:11px; font-size:14.5px; font-weight:700; cursor:pointer; box-shadow:0 8px 18px -5px rgba(34,197,94,0.4); margin-top:4px; display:flex; align-items:center; justify-content:center; gap:8px; transition:0.15s; font-family:inherit; }
-        .btn:active { transform:none !important; opacity:0.9; }
+        .btn:active { transform:scale(0.97) !important; opacity:0.9; }
         .btn:disabled { opacity:0.65; cursor:not-allowed; }
+        .year-btn:active { transform:scale(0.95); opacity:0.9; }
+        .btn.loading { opacity:0.75; pointer-events:none; }
         .btn.sec { background:rgba(0,0,0,0.4); border:1.5px solid var(--border); color:#fff; box-shadow:none; margin-top:8px; }
         .btn.google { background:#fff; color:#1f2937; box-shadow:0 4px 12px rgba(0,0,0,0.2); border:1px solid rgba(0,0,0,0.08); }
         .btn.google img { width:18px; height:18px; }
@@ -399,21 +401,39 @@ function returnToApp() {
   toast("অ্যাপে ফিরে যান — লগইন সেভ হয়েছে।", "info");
 }
 async function finish(u, title) {
-  u.version = u.foundVersion || u.version || VER; u.app = COL;
+  if (window._krFinishing) return;
+  window._krFinishing = true;
+  u.version = VER; u.app = COL; u.foundVersion = "flat";
   const c = Object.assign({}, u.user_profile); delete c.password_hash;
   if (c.email) c.email = String(c.email).toLowerCase().trim();
+  if (!c.joined) c.joined = new Date().toLocaleDateString("en-GB");
+  c.version = VER;
   u.user_profile = c; CUR = u;
+  // Firestore ফ্ল্যাট ডক আপডেট (জন্ম/যোগদান সহ)
+  try {
+    await userRef(c.uid).set({
+      uid: c.uid, app: COL, version: VER,
+      name: c.name || "", email: c.email || "",
+      birth_year: c.birth_year || "", birth_date: c.birth_date || "",
+      joined: c.joined, avatar: u.avatar || null, isCircle: true,
+      app_permission: true, google: true, address: c.address || "",
+      updatedAt: TS()
+    }, { merge: true });
+  } catch (e) {}
   try { localStorage.setItem("kr_cur_user", JSON.stringify(u)); localStorage.setItem("kr_user_uid", c.uid);
     if (c.email) { const m = JSON.parse(localStorage.getItem("kr_email_uid") || "{}"); m[c.email] = c.uid; localStorage.setItem("kr_email_uid", JSON.stringify(m)); } } catch (e) {}
   $("okTitle").textContent = title || "লগইন সফল!";
   $("okMsg").innerHTML = (c.name ? "নাম: <b>" + c.name + "</b><br>" : "") + (c.email ? "ইমেইল: <b>" + c.email + "</b><br>" : "") +
-    "UID: <b style=\"color:#4ade80\">" + c.uid + "</b><br><br>অ্যাপে ফিরে যাচ্ছে…";
+    "UID: <b style=\"color:#4ade80\">" + c.uid + "</b><br>" +
+    (c.birth_year ? "জন্ম সাল: <b>" + c.birth_year + "</b><br>" : "") +
+    (c.joined ? "যোগদান: <b>" + c.joined + "</b><br>" : "") +
+    "<br>অ্যাপে ফিরে যাচ্ছে…";
   go("success");
-  sessP = writeSession(u);                         // সেশন লেখা শেষ না হওয়া পর্যন্ত অপেক্ষা (সর্বোচ্চ ২.৫s)
-  await Promise.race([sessP, new Promise(r => setTimeout(r, 2500))]);
-  // last আবার RTDB-তে লেখো
+  // সেশন দ্রুত লেখো — বেশি অপেক্ষা নয়
+  sessP = writeSession(u);
+  await Promise.race([sessP, new Promise(r => setTimeout(r, 600))]);
   try {
-    const pay2 = { uid: c.uid, ver: u.version || VER, name: c.name || "", email: String(c.email || "").toLowerCase(),
+    const pay2 = { uid: c.uid, ver: VER, name: c.name || "", email: String(c.email || "").toLowerCase(),
       avatar: u.avatar || "", credit: 0, birth_year: c.birth_year || "", birth_date: c.birth_date || "",
       joined: c.joined || "", at: Date.now(), expiresAt: Date.now() + 15 * 60 * 1000, app: COL };
     if (rtdb) {
@@ -421,7 +441,7 @@ async function finish(u, title) {
       if (SID) rtdb.ref(COL + "/LoginSessions/" + SID).set(pay2).catch(()=>{});
     }
   } catch (e) {}
-  notifyApp(u); bindEmail(c.email, c.uid, c.name); ensureFlat(u);
+  notifyApp(u);
   returnToApp();
 }
 $("btnReturn").onclick = () => { if (CUR) notifyApp(CUR); returnToApp(); };
@@ -484,26 +504,45 @@ $("btnReset").onclick = resetBirth;
 $("btnCancel").onclick = () => { pend = null; go("login"); };
 $("btnConfirm").onclick = async () => {
   const s = state(); if (!pend || !s.valid) return;
+  if (window._krConfirmBusy) return;
+  window._krConfirmBusy = true;
   const { email, name, photo, existing, uidP } = pend, btn = $("btnConfirm");
-  if (s.age < MIN_AGE) { if (email) blockEmail(email, "underage_" + s.year); toast("৫ বছরের নিচে অ্যাকাউন্ট নয়। ইমেইল ব্লক।", "err"); pend = null; go("login"); return; }
-  busy(btn, true, "অপেক্ষা...");
+  if (s.age < MIN_AGE) {
+    if (email) blockEmail(email, "underage_" + s.year);
+    toast("৫ বছরের নিচে অ্যাকাউন্ট নয়। ইমেইল ব্লক।", "err");
+    pend = null; window._krConfirmBusy = false; go("login"); return;
+  }
+  busy(btn, true, "সেভ হচ্ছে…");
   try {
-    const extra = { birth_year: s.year }; if (s.date) extra.birth_date = s.date;
+    const joinedNow = new Date().toLocaleDateString("en-GB");
+    const extra = { birth_year: s.year, joined: joinedNow };
+    if (s.date) extra.birth_date = s.date;
+    const pendCopy = pend;
     pend = null;
-    if (existing) {
-      Object.assign(existing.user_profile, extra);
-      userRef(existing.user_profile.uid).set(Object.assign({}, extra, { uid: existing.user_profile.uid, updatedAt: TS() }), { merge: true }).catch(() => {});
-      finish(existing, "Google লগইন সফল!");
+    if (pendCopy.existing) {
+      const ex = pendCopy.existing;
+      if (!ex.user_profile.joined) ex.user_profile.joined = joinedNow;
+      Object.assign(ex.user_profile, extra);
+      await userRef(ex.user_profile.uid).set(Object.assign({
+        uid: ex.user_profile.uid, name: ex.user_profile.name || name, email: email || ex.user_profile.email || "",
+        version: VER, app: COL, app_permission: true, google: true, updatedAt: TS()
+      }, extra), { merge: true });
+      await finish(ex, "Google লগইন সফল!");
     } else {
-      const uid = await uidP;
-      const u = { app: COL, version: VER, foundVersion: VER,
-        user_profile: Object.assign({ name, email, uid, joined: new Date().toLocaleDateString("en-GB"), version: VER, app_permission: true, google: true }, extra),
+      const uid = await (pendCopy.uidP || newUid());
+      const u = { app: COL, version: VER, foundVersion: "flat",
+        user_profile: Object.assign({ name, email, uid, version: VER, app_permission: true, google: true }, extra),
         user_credit: CREDIT0, debt_credit: 0, avatar: photo, isCircle: true };
       await saveNewUser(u);
-      finish(u, "অ্যাকাউন্ট তৈরি হয়েছে!");
+      await finish(u, "অ্যাকাউন্ট তৈরি হয়েছে!");
     }
-  } catch (e) { console.error(e); toast("তৈরি ব্যর্থ। আবার চেষ্টা করুন।", "err"); }
-  busy(btn, false); refresh();
+  } catch (e) {
+    console.error(e);
+    toast("তৈরি ব্যর্থ। আবার চেষ্টা করুন।", "err");
+    busy(btn, false);
+    window._krConfirmBusy = false;
+    refresh();
+  }
 };
 
 /* ---------- Google ---------- */
@@ -516,12 +555,21 @@ async function processGoogle(gu) {
     if (existing.app_permission === false) { toast("অ্যাপ ব্যবহারের অনুমতি নেই।", "err"); return; }
     if (photo && !existing.avatar) existing.avatar = photo;
     if (!existing.user_profile.email) existing.user_profile.email = email;
-    if (existing.user_profile.birth_year) { finish(existing, "Google লগইন সফল!"); return; }  // জন্মসাল আছে → জিজ্ঞাসা নয়
-    pend = { email, name, photo, existing };               // জন্মসাল নেই → শুধু তখনই
+    // নাম/ইমেইল/ছবি আপডেট
+    if (name) existing.user_profile.name = name;
+    if (email) existing.user_profile.email = email;
+    if (existing.user_profile.birth_year) {
+      // জন্মসাল আছে → সাথে সাথে অ্যাপে ফেরত (লগইন লুপ নয়)
+      finish(existing, "Google লগইন সফল!");
+      return;
+    }
+    pend = { email, name, photo, existing }; // জন্মসাল নেই → একবারই জিজ্ঞাসা
   } else {
-    pend = { email, name, photo, existing: null, uidP: newUid() };   // নতুন ইউজার: আইডি আগেই তৈরি শুরু
+    pend = { email, name, photo, existing: null, uidP: newUid() };
   }
-  resetBirth(); go("birth");
+  resetBirth();
+  go("birth");
+  toast("জন্ম সাল নির্বাচন করুন", "info");
 }
 function gErr(e) {
   const c = e && e.code || "";
@@ -532,23 +580,39 @@ function gErr(e) {
   return "Google ব্যর্থ: " + (e.message || c);
 }
 $("btnGoogle").onclick = async () => {
-  const b = $("btnGoogle"); b.disabled = true;
+  if (window._krGoogleBusy || window._krFinishing) return;
+  window._krGoogleBusy = true;
+  const b = $("btnGoogle");
+  busy(b, true, "Google খুলছে…");
   const pv = new firebase.auth.GoogleAuthProvider();
   pv.setCustomParameters({ prompt: "select_account" }); pv.addScope("profile"); pv.addScope("email");
   try {
-    try { const r = await auth.signInWithPopup(pv); await processGoogle(r.user); }
-    catch (e) {
+    try {
+      const r = await auth.signInWithPopup(pv);
+      await processGoogle(r.user);
+    } catch (e) {
       if (e.code === "auth/unauthorized-domain") throw e;
-      if (/popup|webview|blocked|cancelled/i.test((e.code || "") + (e.message || ""))) { await auth.signInWithRedirect(pv); return; }
+      if (/popup|webview|blocked|cancelled/i.test((e.code || "") + (e.message || ""))) {
+        await auth.signInWithRedirect(pv);
+        return; // redirect — পেজ যাবে, বাটন রিসেট লাগবে না
+      }
       throw e;
     }
-  } catch (e) { console.error(e); toast(gErr(e), "err"); }
-  b.disabled = false;
+  } catch (e) {
+    console.error(e);
+    toast(gErr(e), "err");
+  } finally {
+    window._krGoogleBusy = false;
+    busy(b, false);
+  }
 };
 document.addEventListener("DOMContentLoaded", async () => {
-  try { localStorage.removeItem("kr_cur_user"); } catch (e) {}
-  try { const r = await auth.getRedirectResult(); if (r && r.user) await processGoogle(r.user); }
-  catch (e) { if (e.code && e.code !== "auth/null-user") toast(gErr(e), "err"); }
+  try {
+    const r = await auth.getRedirectResult();
+    if (r && r.user && !window._krFinishing) await processGoogle(r.user);
+  } catch (e) {
+    if (e.code && e.code !== "auth/null-user") toast(gErr(e), "err");
+  }
 });
 </script>
 </body>
