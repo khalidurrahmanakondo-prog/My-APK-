@@ -185,11 +185,14 @@ let rtdb = null; try { rtdb = firebase.database(); } catch (e) {}
 
 /* ============================================================
    নিয়ম (নিশ্চিত করা হয়েছে):
-   ১) প্রথমবার লগইন  → COL/{নতুন UID} ডকুমেন্ট তৈরি হবে, সব তথ্য সেখানে থাকবে।
-   ২) একই ইমেইলে আবার লগইন → Firestore-এ কিছুই লেখা হবে না:
-        • নতুন UID নেই, নতুন ডকুমেন্ট/সেকশন নেই
-        • আগের ডাটা আপডেট/রিসেট/ওভাররাইট নেই (নাম, ছবি, joined — সব অক্ষুণ্ণ)
-        • শুধু একটি দ্রুত READ করে প্রোফাইল নিয়ে অ্যাপে ফেরত
+   ১) নতুন ইমেইল দিয়ে লগইন → নতুন UID তৈরি করে কালেকশনে ডকুমেন্ট সেভ।
+      (ইউজারকে “ইমেইল পাওয়া যায়নি” বলা হবে না — সরাসরি জন্ম সাল নির্বাচনে যাবে)
+   ২) পুরনো ইমেইল দিয়ে লগইন → শুধু ১টি দ্রুত READ → পুরনো UID দিয়ে লগইন।
+        • কোনো নতুন ডকুমেন্ট/সেকশন তৈরি হয় না
+        • নাম, ছবি, যোগদান তারিখ — কিছুই পরিবর্তন/ওভাররাইট হয় না
+        • শুধু লোকাল সেশন সেভ করে অ্যাপে ফেরত
+   ৩) ব্লকড ইমেইল লগইন করতে পারবে না।
+   কালেকশন নাম (“KR pro math master”) ও UID ফরম্যাট অপরিবর্তিত।
    ============================================================ */
 const COL = "KR pro math master";
 const MIN_AGE = 5;
@@ -261,7 +264,7 @@ async function lookupUser(email) {
   }
 
   // সাধারণ পথ: ইমেইল query (একবারই; blocked চেকও এখান থেকেই)
-  const snap = await db.collection(COL).where("email", "==", email).limit(5).get();
+  const snap = await db.collection(COL).where("email", "==", email).limit(1).get();
   for (const d of snap.docs) {
     if (d.id.startsWith("_")) continue;
     const data = d.data() || {};
@@ -332,7 +335,7 @@ function handoff(p) {
   } catch (e) {}
   // RTDB একই পাথ overwrite — ব্যাকগ্রাউন্ডে, অপেক্ষা ছাড়া
   let job = Promise.resolve();
-  if (rtdb) { try { job = Promise.resolve(rtdb.ref(COL + "/LoginSessions/last").set(pay)).catch(() => null); } catch (e) {} }
+  if (rtdb) { try { job = Promise.resolve(rtdb.ref(COL + "/লগইন_সেশন/শেষ").set(pay)).catch(() => null); } catch (e) {} }
   return job;
 }
 
@@ -485,7 +488,8 @@ $("btnConfirm").onclick = async () => {
 async function processGoogle(gu) {
   if (!gu) { toast("Google ব্যর্থ।", "err"); return; }
   const email = (gu.email || "").toLowerCase().trim();
-  if (!email) { toast("ইমেইল পাওয়া যায়নি।", "err"); return; }
+  // Google অ্যাকাউন্টেই ইমেইল না থাকলে (খুব বিরল) — নতুন অ্যাকাউন্ট হিসেবে ধরা হয় না
+  if (!email) { toast("এই Google অ্যাকাউন্টে ইমেইল নেই। অন্য অ্যাকাউন্ট দিয়ে চেষ্টা করুন।", "err"); return; }
 
   let found = null;
   try { found = await lookupUser(email); }
@@ -498,7 +502,8 @@ async function processGoogle(gu) {
     return;
   }
 
-  // একদম নতুন ইউজার — জন্ম সাল নিয়ে ডক তৈরি হবে
+  // নতুন ইমেইল = নতুন অ্যাকাউন্ট। ইউজারকে “ইমেইল পাওয়া যায়নি” বলা হয় না।
+  // সরাসরি জন্ম সাল/তারিখ নির্বাচন স্ক্রিনে নিয়ে যাওয়া হয়।
   pend = {
     email,
     name: gu.displayName || email.split("@")[0] || "ইউজার",
@@ -508,7 +513,7 @@ async function processGoogle(gu) {
   };
   resetBirth();
   go("birth");
-  toast("জন্ম সাল নির্বাচন করুন", "info");
+  toast("নতুন অ্যাকাউন্ট — জন্ম সাল নির্বাচন করুন", "info");
 }
 
 function gErr(e) {
@@ -526,7 +531,13 @@ $("btnGoogle").onclick = async () => {
   const b = $("btnGoogle");
   busy(b, true, "Google খুলছে…");
   const pv = new firebase.auth.GoogleAuthProvider();
-  pv.setCustomParameters({ prompt: "select_account" });
+  // নাম, ইমেইল, প্রোফাইল ছবি ও অন্যান্য বেসিক প্রোফাইল তথ্যের অনুমতি চাওয়া
+  pv.addScope("profile");
+  pv.addScope("email");
+  pv.addScope("https://www.googleapis.com/auth/userinfo.profile");
+  pv.addScope("https://www.googleapis.com/auth/userinfo.email");
+  // প্রতিবার অ্যাকাউন্ট বেছে নেওয়া + অনুমতি কনসেন্ট দেখানো
+  pv.setCustomParameters({ prompt: "select_account consent" });
   try {
     try {
       const r = await auth.signInWithPopup(pv);
