@@ -300,19 +300,26 @@ async function lookupUser(email) {
 }
 
 /**
- * শুধু নতুন ইউজারের জন্য: খালি UID নিয়ে ডক তৈরি — transaction, তাই
- * কখনো অন্য কারও ডক ওভাররাইট হবে না। সব তথ্য একবারেই লেখা হয়।
+ * শুধু নতুন ইউজারের জন্য: ডক তৈরি।
+ * গুরুত্বপূর্ণ ফিক্স: Firestore document ID হিসেবে Google Auth UID ব্যবহার করা হয়
+ * (যাতে সাধারণ Security Rules পাস হয়)। অ্যাপের UID আগের মতোই "KR-xxxx" ফরম্যাট থাকে
+ * (data.uid ফিল্ডে)। পুরনো ইউজারদের কোনো পরিবর্তন হয় না।
  */
 async function createUserDoc(info) {
   const joined = new Date().toLocaleDateString("en-GB");
-  const makeProfile = (uid, full) => ({
-    uid: uid, name: full.name, email: full.email,
+  const makeProfile = (appUid, full) => ({
+    uid: appUid, name: full.name, email: full.email,
     birth_year: full.birth_year, birth_date: full.birth_date,
     joined: full.joined, address: full.address, avatar: full.avatar,
     credit: full.credit, app_permission: true
   });
-  const buildFull = (uid) => ({
-    uid: uid,
+
+  // অ্যাপের জন্য KR- ফরম্যাট UID (অপরিবর্তিত)
+  const appUid = "KR-" + Math.floor(1e7 + Math.random() * 9e7);
+  const authUid = String(info.auth_uid || "").trim();
+
+  const full = {
+    uid: appUid,                                    // অ্যাপ যে UID দেখবে
     name: info.name || "",
     email: String(info.email || "").toLowerCase().trim(),
     birth_year: info.birth_year || "",
@@ -323,42 +330,85 @@ async function createUserDoc(info) {
     credit: Number(info.credit != null ? info.credit : NEW_USER_CREDITS),
     app_permission: true,
     provider: "google",
-    auth_uid: info.auth_uid || "",
+    auth_uid: authUid,
     email_verified: info.email_verified === true,
     created_at: TS()
-  });
+  };
 
-  // আগে ৬বার ছোট UID দিয়ে transaction চেষ্টা
-  for (let i = 0; i < 6; i++) {
-    const uid = "KR-" + Math.floor(1e7 + Math.random() * 9e7);
-    const ref = userRef(uid);
-    const full = buildFull(uid);
+  // ১) প্রথমে Auth UID কে document ID হিসেবে ব্যবহার (Rules-friendly)
+  if (authUid) {
+    const ref = userRef(authUid);
+    try {
+      const created = await db.runTransaction(async tx => {
+        const snap = await tx.get(ref);
+        if (snap.exists) {
+          // ইতিমধ্যে আছে — email মিলিয়ে দেখি
+          const existing = snap.data() || {};
+          if (String(existing.email || "").toLowerCase().trim() === full.email) {
+            // একই ইমেইল — পুরনোটাই ফেরত দাও
+            return { already: true, data: existing };
+          }
+          // অন্য ইমেইল আছে — overwrite করব না
+          return { already: true, conflict: true };
+        }
+        tx.set(ref, full);
+        return { created: true };
+      });
+
+      if (created && created.created) {
+        return makeProfile(appUid, full);
+      }
+      if (created && created.already && !created.conflict) {
+        // আগে থেকেই এই auth UID + email আছে
+        const d = created.data || {};
+        return makeProfile(d.uid || appUid, d);
+      }
+      // conflict হলে নিচের fallback-এ যাব
+    } catch (txError) {
+      const code = String(txError && txError.code || "");
+      // permission-denied হলে সরাসরি set চেষ্টা
+      if (code === "permission-denied" || code === "firestore/permission-denied") {
+        try {
+          await ref.set(full);
+          return makeProfile(appUid, full);
+        } catch (e2) {
+          console.warn("Auth-UID set failed, trying KR- fallback", e2);
+        }
+      } else {
+        console.warn("Transaction error, trying fallback", txError);
+      }
+    }
+  }
+
+  // ২) Fallback: আগের মতো KR- UID কে document ID হিসেবে ব্যবহার
+  for (let i = 0; i < 5; i++) {
+    const tryUid = (i === 0) ? appUid : ("KR-" + Math.floor(1e12 + Math.random() * 9e12));
+    const ref = userRef(tryUid);
+    const tryFull = Object.assign({}, full, { uid: tryUid });
     try {
       const created = await db.runTransaction(async tx => {
         const snap = await tx.get(ref);
         if (snap.exists) return false;
-        tx.set(ref, full);
+        tx.set(ref, tryFull);
         return true;
       });
-      if (created) return makeProfile(uid, full);
+      if (created) return makeProfile(tryUid, tryFull);
     } catch (txError) {
       const code = String(txError && txError.code || "");
-      // permission-denied হলে transaction GET আটকে থাকতে পারে — সরাসরি set চেষ্টা
       if (code === "permission-denied" || code === "firestore/permission-denied") {
-        const directUid = "KR-" + Math.floor(1e12 + Math.random() * 9e12);
-        const directFull = buildFull(directUid);
-        await userRef(directUid).set(directFull);
-        return makeProfile(directUid, directFull);
+        try {
+          await ref.set(tryFull);
+          return makeProfile(tryUid, tryFull);
+        } catch (e2) { /* continue loop */ }
       }
-      throw txError;
     }
   }
 
-  // শেষ চেষ্টা: লম্বা random UID দিয়ে সরাসরি set
-  const fallbackUid = "KR-" + Math.floor(1e12 + Math.random() * 9e12);
-  const fallbackFull = buildFull(fallbackUid);
-  await userRef(fallbackUid).set(fallbackFull);
-  return makeProfile(fallbackUid, fallbackFull);
+  // ৩) শেষ চেষ্টা: সরাসরি set (যেকোনো error bubble হবে)
+  const lastUid = "KR-" + Math.floor(1e12 + Math.random() * 9e12);
+  const lastFull = Object.assign({}, full, { uid: lastUid });
+  await userRef(lastUid).set(lastFull);
+  return makeProfile(lastUid, lastFull);
 }
 
 /* ---------- অ্যাপ হ্যান্ডঅফ (Firestore-এ কিছু লেখে না) ---------- */
@@ -528,11 +578,12 @@ $("btnConfirm").onclick = async () => {
     pend = null;
     await finish(p, "অ্যাকাউন্ট তৈরি হয়েছে!");
   } catch (e) {
-    console.error(e);
-    const denied = e && (e.code === "permission-denied" || e.code === "firestore/permission-denied");
+    console.error("createUserDoc failed:", e);
+    const code = String(e && e.code || "");
+    const denied = code === "permission-denied" || code === "firestore/permission-denied";
     toast(denied
-      ? "Firebase write permission নেই। Firestore rules-এ authenticated user-এর create অনুমতি দিন।"
-      : "অ্যাকাউন্ট তৈরি ব্যর্থ। নেটওয়ার্ক পরীক্ষা করে আবার চেষ্টা করুন।", "err");
+      ? "অ্যাকাউন্ট সেভ করা যায়নি (permission)। Firebase Console → Firestore Rules-এ signed-in user-এর create অনুমতি দিন।"
+      : "অ্যাকাউন্ট তৈরি ব্যর্থ। ইন্টারনেট চেক করে আবার চেষ্টা করুন। (" + (e.message || code || "error") + ")", "err");
     busy(btn, false);
     refresh();
   } finally {
