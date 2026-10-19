@@ -50,14 +50,24 @@
         .ib input:focus { border-color:var(--green); box-shadow:0 0 0 3px rgba(34,197,94,0.3); background:rgba(5,12,8,0.75); }
         .ib input:disabled { opacity:.35; }
         .help { font-size:11px; color:var(--muted); margin-top:4px; display:block; }
-        .btn { width:100%; padding:13px; background:linear-gradient(135deg,var(--green-dark),var(--green)); color:#fff; border:none; border-radius:11px; font-size:14.5px; font-weight:700; cursor:pointer; box-shadow:0 8px 18px -5px rgba(34,197,94,0.4); margin-top:4px; display:flex; align-items:center; justify-content:center; gap:8px; transition:0.15s; font-family:inherit; }
-        .btn:active { transform:scale(0.97) !important; opacity:0.9; }
+        .btn { width:100%; padding:13px; background:linear-gradient(135deg,var(--green-dark),var(--green)); color:#fff; border:none; border-radius:11px; font-size:14.5px; font-weight:700; cursor:pointer; box-shadow:0 8px 18px -5px rgba(34,197,94,0.4); margin-top:4px; display:flex; align-items:center; justify-content:center; gap:8px; transition:transform 0.12s ease, opacity 0.15s ease, box-shadow 0.15s ease; font-family:inherit; position:relative; overflow:hidden; -webkit-user-select:none; user-select:none; }
+        .btn:hover:not(:disabled) { box-shadow:0 10px 22px -4px rgba(34,197,94,0.55); }
+        .btn:active:not(:disabled) { transform:scale(0.96); opacity:0.92; }
         .btn:disabled { opacity:0.65; cursor:not-allowed; }
-        .year-btn:active { transform:scale(0.95); opacity:0.9; }
-        .btn.loading { opacity:0.75; pointer-events:none; }
+        .btn.loading { opacity:0.8; pointer-events:none; }
+        .btn.loading .spin-dot {
+            display:inline-block; width:14px; height:14px; border:2px solid rgba(255,255,255,0.35);
+            border-top-color:#fff; border-radius:50%; animation:spin 0.65s linear infinite; flex-shrink:0;
+        }
+        @keyframes spin { to { transform:rotate(360deg); } }
         .btn.sec { background:rgba(0,0,0,0.4); border:1.5px solid var(--border); color:#fff; box-shadow:none; margin-top:8px; }
+        .btn.sec:hover:not(:disabled) { background:rgba(0,0,0,0.55); box-shadow:none; }
         .btn.google { background:#fff; color:#1f2937; box-shadow:0 4px 12px rgba(0,0,0,0.2); border:1px solid rgba(0,0,0,0.08); }
+        .btn.google:hover:not(:disabled) { box-shadow:0 6px 16px rgba(0,0,0,0.28); }
         .btn.google img { width:18px; height:18px; }
+        .btn.google.loading .spin-dot { border-color:rgba(0,0,0,0.2); border-top-color:#1f2937; }
+        .back-app { transition:transform 0.12s ease, opacity 0.15s ease; }
+        .back-app:active { transform:scale(0.96); opacity:0.85; }
         .toast-wrap { position:fixed; top:16px; right:12px; z-index:9999; display:flex; flex-direction:column; gap:8px; max-width:min(300px,calc(100vw - 24px)); pointer-events:none; }
         .toast { pointer-events:auto; background:rgba(39,205,120,0.95); color:#fff; border-radius:10px; padding:10px 12px; font-size:13px; font-weight:600; box-shadow:0 4px 14px rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.2); opacity:1; }
         .toast.err { background:rgba(255,75,75,0.95); }
@@ -78,8 +88,9 @@
         .year-btn {
             padding:10px 4px; border-radius:10px; border:1px solid var(--border);
             background:rgba(5,12,8,0.55); color:#fff; font-weight:700; font-size:14px; cursor:pointer;
-            transform:none !important; transition:none !important; font-family:inherit;
+            font-family:inherit; transition:transform 0.1s ease, background 0.15s ease, border-color 0.15s ease, opacity 0.12s ease;
         }
+        .year-btn:active { transform:scale(0.93); opacity:0.9; }
         .year-btn.sel { background:linear-gradient(135deg,var(--green-dark),var(--green)); border-color:var(--green); }
         * { scroll-behavior:auto !important; }
         .selected-year { text-align:center; color:var(--green); font-weight:700; margin-top:6px; font-size:14px; }
@@ -224,9 +235,11 @@ function busy(btn, on, txt) {
   if (on) {
     if (!btn.dataset.o) btn.dataset.o = btn.innerHTML;
     btn.disabled = true;
-    btn.textContent = txt || "...";
+    btn.classList.add("loading");
+    btn.innerHTML = '<span class="spin-dot"></span> ' + (txt || "...");
   } else {
     btn.disabled = false;
+    btn.classList.remove("loading");
     if (btn.dataset.o) { btn.innerHTML = btn.dataset.o; delete btn.dataset.o; }
   }
 }
@@ -298,25 +311,28 @@ async function createUserDoc(info) {
     joined: full.joined, address: full.address, avatar: full.avatar,
     credit: full.credit, app_permission: true
   });
+  const buildFull = (uid) => ({
+    uid: uid,
+    name: info.name || "",
+    email: String(info.email || "").toLowerCase().trim(),
+    birth_year: info.birth_year || "",
+    birth_date: info.birth_date || "",
+    joined: joined,
+    address: info.address || "",
+    avatar: info.avatar || null,
+    credit: Number(info.credit != null ? info.credit : NEW_USER_CREDITS),
+    app_permission: true,
+    provider: "google",
+    auth_uid: info.auth_uid || "",
+    email_verified: info.email_verified === true,
+    created_at: TS()
+  });
+
+  // আগে ৬বার ছোট UID দিয়ে transaction চেষ্টা
   for (let i = 0; i < 6; i++) {
     const uid = "KR-" + Math.floor(1e7 + Math.random() * 9e7);
     const ref = userRef(uid);
-    const full = {
-      uid: uid,
-      name: info.name || "",
-      email: String(info.email || "").toLowerCase().trim(),
-      birth_year: info.birth_year || "",
-      birth_date: info.birth_date || "",
-      joined: joined,
-      address: info.address || "",
-      avatar: info.avatar || null,
-      credit: Number(info.credit != null ? info.credit : NEW_USER_CREDITS),
-      app_permission: true,
-      provider: "google",
-      auth_uid: info.auth_uid || "",
-      email_verified: info.email_verified === true,
-      created_at: TS()
-    };
+    const full = buildFull(uid);
     try {
       const created = await db.runTransaction(async tx => {
         const snap = await tx.get(ref);
@@ -326,17 +342,23 @@ async function createUserDoc(info) {
       });
       if (created) return makeProfile(uid, full);
     } catch (txError) {
-      // কিছু Firestore rules নতুন ডকে GET/transaction আটকায় কিন্তু authenticated CREATE অনুমতি দেয়।
-      // সেই ক্ষেত্রে নতুন, দীর্ঘ random UID দিয়ে সরাসরি document তৈরি করি; write deny হলে আসল error ফেরত যাবে।
       const code = String(txError && txError.code || "");
-      if (code !== "permission-denied" && code !== "firestore/permission-denied") throw txError;
-      const directUid = "KR-" + Math.floor(1e12 + Math.random() * 9e12);
-      const directFull = Object.assign({}, full, { uid: directUid });
-      await userRef(directUid).set(directFull);
-      return makeProfile(directUid, directFull);
+      // permission-denied হলে transaction GET আটকে থাকতে পারে — সরাসরি set চেষ্টা
+      if (code === "permission-denied" || code === "firestore/permission-denied") {
+        const directUid = "KR-" + Math.floor(1e12 + Math.random() * 9e12);
+        const directFull = buildFull(directUid);
+        await userRef(directUid).set(directFull);
+        return makeProfile(directUid, directFull);
+      }
+      throw txError;
     }
   }
-  throw new Error("uid-collision");
+
+  // শেষ চেষ্টা: লম্বা random UID দিয়ে সরাসরি set
+  const fallbackUid = "KR-" + Math.floor(1e12 + Math.random() * 9e12);
+  const fallbackFull = buildFull(fallbackUid);
+  await userRef(fallbackUid).set(fallbackFull);
+  return makeProfile(fallbackUid, fallbackFull);
 }
 
 /* ---------- অ্যাপ হ্যান্ডঅফ (Firestore-এ কিছু লেখে না) ---------- */
@@ -507,7 +529,10 @@ $("btnConfirm").onclick = async () => {
     await finish(p, "অ্যাকাউন্ট তৈরি হয়েছে!");
   } catch (e) {
     console.error(e);
-    toast("তৈরি ব্যর্থ। আবার চেষ্টা করুন।", "err");
+    const denied = e && (e.code === "permission-denied" || e.code === "firestore/permission-denied");
+    toast(denied
+      ? "Firebase write permission নেই। Firestore rules-এ authenticated user-এর create অনুমতি দিন।"
+      : "অ্যাকাউন্ট তৈরি ব্যর্থ। নেটওয়ার্ক পরীক্ষা করে আবার চেষ্টা করুন।", "err");
     busy(btn, false);
     refresh();
   } finally {
@@ -594,29 +619,17 @@ async function processGoogle(resultOrUser) {
     return;
   }
 
-  // এই email-এর app profile না থাকলে Google পরিচয় থেকে সঙ্গে সঙ্গে নতুন account তৈরি করি।
-  // জন্মতারিখ/ঠিকানা Google basic profile-এ আসে না; সেগুলো অনুপস্থিত থাকলে ফাঁকা রাখা হয়,
-  // কিন্তু email, UID, নাম, avatar, joined ও প্রাথমিক credit এখনই সংরক্ষিত হবে।
-  try {
-    const created = await createUserDoc({
-      email,
-      name: (gu && gu.displayName) || email.split("@")[0] || "ইউজার",
-      avatar: (gu && gu.photoURL) || null,
-      address: "",
-      credit: NEW_USER_CREDITS,
-      auth_uid: (gu && gu.uid) || "",
-      email_verified: !!(gu && gu.emailVerified),
-      birth_year: "",
-      birth_date: ""
-    });
-    await finish(created, "নতুন অ্যাকাউন্ট তৈরি ও লগইন সফল!");
-  } catch (e) {
-    console.error("New Firebase account creation failed", e);
-    const msg = e && (e.code === "permission-denied" || e.code === "firestore/permission-denied")
-      ? "Firebase-এ নতুন account create করার write permission নেই। Firestore rules-এ signed-in user-এর create অনুমতি দিন।"
-      : "নতুন account Firebase-এ save হয়নি। নেটওয়ার্ক/Firebase পরীক্ষা করে আবার চেষ্টা করুন।";
-    toast(msg, "err");
-  }
+  // নতুন ইমেইল — জন্ম তারিখ/সাল নিয়ে তারপর KR pro math master কালেকশনে ডক তৈরি
+  pend = {
+    name: (gu && gu.displayName) || email.split("@")[0] || "ইউজার",
+    email: email,
+    photo: (gu && gu.photoURL) || null,
+    auth_uid: (gu && gu.uid) || "",
+    email_verified: !!(gu && gu.emailVerified)
+  };
+  resetBirth();
+  go("birth");
+  toast("নতুন অ্যাকাউন্ট — জন্ম সাল/তারিখ দিন।", "info");
 }
 
 function gErr(e) {
