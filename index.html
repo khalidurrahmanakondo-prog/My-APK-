@@ -24,7 +24,7 @@
         body {
             font-family: 'Hind Siliguri','Plus Jakarta Sans',-apple-system,sans-serif;
             min-height:100vh; background-color:#071108;
-            background-image:url('https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?q=80&w=1920&auto=format&fit=crop');
+            background-image:url('login.png');
             background-size:cover; background-position:center; background-attachment:scroll;
             color:var(--text); overflow-x:hidden; overflow-y:auto; overscroll-behavior:none; -webkit-overflow-scrolling:touch;
         }
@@ -99,8 +99,7 @@
 <body>
     <div class="toast-wrap" id="toasts"></div>
     <div class="wrap">
-        <a class="back-app" href="#" onclick="returnToApp(); return false;">⬅️ অ্যাপে ফিরে যান</a>
-        <!-- স্থায়ী অ্যাপ লোগো/নাম নেই — অ্যাপ থেকে শেয়ার করলে দেখাবে -->
+
         <div class="brand">
             <div class="logo-box" id="sharedLogoBox" style="display:none;">
                 <img id="appLogo" src="" alt="App" width="80" height="80">
@@ -190,7 +189,7 @@ firebase.initializeApp({
   authDomain: "kr-calculator-a-bc1e2.firebaseapp.com",
   databaseURL: "https://kr-calculator-a-bc1e2-default-rtdb.firebaseio.com",
   projectId: "kr-calculator-a-bc1e2",
-  storageBucket: "kr-calculator-a-bc1e2.firebasestorage.app",
+  storageBucket: "kr-calculator-a-bc1e2.appspot.com",
   messagingSenderId: "916522220428",
   appId: "1:916522220428:web:b39f14d38c9fe45ecaf4a9",
   measurementId: "G-K4XGHWM4QF"
@@ -198,17 +197,6 @@ firebase.initializeApp({
 const db = firebase.firestore(), auth = firebase.auth();
 let rtdb = null; try { rtdb = firebase.database(); } catch (e) {}
 
-/* ============================================================
-   নিয়ম (নিশ্চিত করা হয়েছে):
-   ১) নতুন ইমেইল দিয়ে লগইন → নতুন UID তৈরি করে কালেকশনে ডকুমেন্ট সেভ।
-      (ইউজারকে “ইমেইল পাওয়া যায়নি” বলা হবে না — সরাসরি জন্ম সাল নির্বাচনে যাবে)
-   ২) পুরনো ইমেইল দিয়ে লগইন → শুধু ১টি দ্রুত READ → পুরনো UID দিয়ে লগইন।
-        • কোনো নতুন ডকুমেন্ট/সেকশন তৈরি হয় না
-        • নাম, ছবি, যোগদান তারিখ — কিছুই পরিবর্তন/ওভাররাইট হয় না
-        • শুধু লোকাল সেশন সেভ করে অ্যাপে ফেরত
-   ৩) ব্লকড ইমেইল লগইন করতে পারবে না।
-   কালেকশন নাম (“KR pro math master”) ও UID ফরম্যাট অপরিবর্তিত।
-   ============================================================ */
 const COL = "KR pro math master";
 const MIN_AGE = 5;
 const NEW_USER_CREDITS = 5;
@@ -247,7 +235,6 @@ function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ 
 
 const userRef = uid => db.collection(COL).doc(uid);
 
-/** ইউজার ডক → প্রোফাইল অবজেক্ট (শুধু পড়া) */
 function packUser(uid, data) {
   data = data || {};
   return {
@@ -265,31 +252,14 @@ function packUser(uid, data) {
 }
 
 /**
- * ইমেইল দিয়ে ইউজার খোঁজা — মাত্র ১টি দ্রুত READ।
- * আগে এই ডিভাইসে সেভ করা UID থাকলে সরাসরি ডক GET (query-র চেয়ে দ্রুত),
- * মিলে গেলে সেটাই; না মিললে একটি email query।
- * রিটার্ন: { profile, blocked } অথবা null (মানে একদম নতুন ইউজার)
+ * ইমেইল দিয়ে আগের অ্যাকাউন্ট খোঁজার ফাংশন।
+ * যদি এই ইমেইল দিয়ে আগে অ্যাকাউন্ট তৈরি করা থাকে, তবে সেই UID রিটার্ন করবে।
  */
 async function lookupUser(email) {
   email = String(email || "").toLowerCase().trim();
   if (!email) return null;
 
-  // দ্রুত পথ: লোকাল UID দিয়ে সরাসরি GET
-  let cachedUid = null;
-  try { cachedUid = localStorage.getItem("kr_user_uid"); } catch (e) {}
-  if (cachedUid && /^KR-\d+$/.test(cachedUid)) {
-    try {
-      const s = await userRef(cachedUid).get();
-      if (s.exists) {
-        const d = s.data() || {};
-        if (String(d.email || "").toLowerCase().trim() === email) {
-          return { profile: packUser(cachedUid, d), blocked: d.blocked === true };
-        }
-      }
-    } catch (e) {}
-  }
-
-  // সাধারণ পথ: ইমেইল query (একবারই; blocked চেকও এখান থেকেই)
+  // ফায়ারস্টোরে ইমেইল দিয়ে চেক
   const snap = await db.collection(COL).where("email", "==", email).limit(1).get();
   for (const d of snap.docs) {
     if (d.id.startsWith("_")) continue;
@@ -300,8 +270,7 @@ async function lookupUser(email) {
 }
 
 /**
- * শুধু নতুন ইউজারের জন্য: খালি UID নিয়ে ডক তৈরি — transaction, তাই
- * কখনো অন্য কারও ডক ওভাররাইট হবে না। সব তথ্য একবারেই লেখা হয়।
+ * নতুন ইমেলের জন্য ১টি মাত্র ইউজার অ্যাকাউন্ট তৈরির ফাংশন
  */
 async function createUserDoc(info) {
   const joined = new Date().toLocaleDateString("en-GB");
@@ -328,7 +297,7 @@ async function createUserDoc(info) {
     created_at: TS()
   });
 
-  // আগে ৬বার ছোট UID দিয়ে transaction চেষ্টা
+  // ইউনিক KR-UID জেনারেট করে সেভ
   for (let i = 0; i < 6; i++) {
     const uid = "KR-" + Math.floor(1e7 + Math.random() * 9e7);
     const ref = userRef(uid);
@@ -343,7 +312,6 @@ async function createUserDoc(info) {
       if (created) return makeProfile(uid, full);
     } catch (txError) {
       const code = String(txError && txError.code || "");
-      // permission-denied হলে transaction GET আটকে থাকতে পারে — সরাসরি set চেষ্টা
       if (code === "permission-denied" || code === "firestore/permission-denied") {
         const directUid = "KR-" + Math.floor(1e12 + Math.random() * 9e12);
         const directFull = buildFull(directUid);
@@ -354,14 +322,12 @@ async function createUserDoc(info) {
     }
   }
 
-  // শেষ চেষ্টা: লম্বা random UID দিয়ে সরাসরি set
   const fallbackUid = "KR-" + Math.floor(1e12 + Math.random() * 9e12);
   const fallbackFull = buildFull(fallbackUid);
   await userRef(fallbackUid).set(fallbackFull);
   return makeProfile(fallbackUid, fallbackFull);
 }
 
-/* ---------- অ্যাপ হ্যান্ডঅফ (Firestore-এ কিছু লেখে না) ---------- */
 function handoff(p) {
   const uid = String(p.uid), now = Date.now();
   const pay = {
@@ -383,16 +349,12 @@ function handoff(p) {
       avatar: p.avatar
     }));
   } catch (e) {}
-  // অ্যাপ content:// WebView-এ — localStorage শেয়ার হয় না।
-  // তাই Firebase-এর সব পাথে লিখি যা অ্যাপ শোনে।
+
   const jobs = [];
   if (rtdb) {
     try { jobs.push(Promise.resolve(rtdb.ref(COL + "/লগইন_সেশন/শেষ").set(pay)).catch(function(){})); } catch (e) {}
     try { jobs.push(Promise.resolve(rtdb.ref(COL + "/LoginSessions/last").set(pay)).catch(function(){})); } catch (e) {}
   }
-  try {
-    jobs.push(Promise.resolve(db.collection(COL).doc("_session_last").set(pay, { merge: true })).catch(function(){}));
-  } catch (e) {}
   return Promise.all(jobs).then(function(){ return true; }).catch(function(){ return false; });
 }
 
@@ -406,7 +368,12 @@ function notifyApp(p) {
 
 let CUR = null;
 function returnToApp() {
-  // অ্যাপ লিঙ্কে ?return= দিলে UID সহ ফেরত (http/https/content/custom scheme)
+  try {
+    if (window.Android || /android_asset/i.test(location.href) || /file:/i.test(location.protocol)) {
+      location.replace("index.html");
+      return;
+    }
+  } catch (e) {}
   try {
     const ret = q.get("return") || "";
     if (CUR && CUR.uid && ret && /^(https?:|content:|intent:|android-app:)/i.test(ret)) {
@@ -416,7 +383,6 @@ function returnToApp() {
         location.replace(u.toString());
         return;
       } catch (e1) {
-        // content:// ইত্যাদিতে URL API ব্যর্থ হলে ম্যানুয়াল
         const joiner = ret.indexOf("?") >= 0 ? "&" : "?";
         location.replace(ret + joiner + "uid=" + encodeURIComponent(CUR.uid));
         return;
@@ -426,16 +392,16 @@ function returnToApp() {
   try { if (window.opener) { window.opener.focus(); window.close(); return; } } catch (e) {}
   try { if (history.length > 1) { history.back(); return; } } catch (e) {}
   try { window.close(); } catch (e) {}
-  toast("অ্যাপে ফিরে যান — লগইন সেভ হয়েছে। Firebase-এ সিগনাল পাঠানো হয়েছে।", "info");
+  try { location.replace("index.html"); } catch (e) {}
+  toast("অ্যাপে ফিরে যান — লগইন সেভ হয়েছে।", "info");
 }
 
-/** সফল লগইন — Firebase-এ সেশন লিখে অ্যাপকে জানানো */
 async function finish(p, title) {
   if (window._krFinishing) return;
   window._krFinishing = true;
   CUR = p;
-  const rt = handoff(p);           // RTDB + Firestore _session_last — অ্যাপ এটা পড়ে
-  notifyApp(p);                    // অ্যাপকে তখনই জানাও
+  const rt = handoff(p);
+  notifyApp(p);
   $("okTitle").textContent = title || "লগইন সফল!";
   $("okMsg").innerHTML =
     (p.name ? "নাম: <b>" + esc(p.name) + "</b><br>" : "") +
@@ -446,12 +412,19 @@ async function finish(p, title) {
     (p.joined ? "যোগদান: <b>" + esc(p.joined) + "</b><br>" : "") +
     (p.address ? "ঠিকানা: <b>" + esc(p.address) + "</b><br>" : "") +
     (p.credit != null ? "ক্রেডিট: <b>" + esc(p.credit) + "</b><br>" : "") +
-    "<br>অ্যাপে ফিরে যাচ্ছে…";
+    "<br><span id=\"okCountdown\">৩ সেকেন্ড পর অ্যাপে ফিরে যাচ্ছে…</span>";
   go("success");
-  // Firebase লেখার জন্য অপেক্ষা (অ্যাপ content:// হলে এটাই একমাত্র সিগনাল)
-  await Promise.race([rt, new Promise(r => setTimeout(r, 2500))]);
+  await Promise.race([rt, new Promise(r => setTimeout(r, 1200))]);
+  let left = 3;
+  const cd = $("okCountdown");
+  const tick = setInterval(function () {
+    left -= 1;
+    if (cd) cd.textContent = (left > 0 ? left : 0) + " সেকেন্ড পর অ্যাপে ফিরে যাচ্ছে…";
+    if (left <= 0) clearInterval(tick);
+  }, 1000);
+  await new Promise(r => setTimeout(r, 3000));
   returnToApp();
-  setTimeout(function () { window._krFinishing = false; }, 2500);
+  setTimeout(function () { window._krFinishing = false; }, 500);
 }
 
 $("btnReturn").onclick = () => { if (CUR) notifyApp(CUR); returnToApp(); };
@@ -522,7 +495,6 @@ function resetBirth() {
 $("btnReset").onclick = resetBirth;
 $("btnCancel").onclick = () => { pend = null; go("login"); };
 
-/* নিশ্চিত করুন — শুধু নতুন ইউজারের ডক এখানে তৈরি হয় */
 $("btnConfirm").onclick = async () => {
   const s = state(); if (!pend || !s.valid) return;
   if (window._krConfirmBusy) return;
@@ -546,8 +518,8 @@ $("btnConfirm").onclick = async () => {
     console.error(e);
     const denied = e && (e.code === "permission-denied" || e.code === "firestore/permission-denied");
     toast(denied
-      ? "Firebase write permission নেই। Firestore rules-এ authenticated user-এর create অনুমতি দিন।"
-      : "অ্যাকাউন্ট তৈরি ব্যর্থ। নেটওয়ার্ক পরীক্ষা করে আবার চেষ্টা করুন।", "err");
+      ? "Firebase write permission নেই। Firestore rules-এ অনুমতি দিন।"
+      : "অ্যাকাউন্ট তৈরি ব্যর্থ। নেটওয়ার্ক পরীক্ষা করুন।", "err");
     busy(btn, false);
     refresh();
   } finally {
@@ -555,7 +527,7 @@ $("btnConfirm").onclick = async () => {
   }
 };
 
-/* ---------- Google ---------- */
+/* ---------- Google Login Flow ---------- */
 function emailFromIdToken(token) {
   try {
     const part = String(token || "").split(".")[1];
@@ -591,7 +563,7 @@ async function resolveGoogleProfile(resultOrUser) {
         profile.picture = profile.picture || info.picture;
         profile.email_verified = profile.email_verified || info.email_verified;
       }
-    } catch (e) { console.warn("Google profile lookup failed", e); }
+    } catch (e) {}
   }
   if (!email && typeof user.reload === "function") {
     try { await user.reload(); email = user.email || ""; } catch (e) {}
@@ -607,32 +579,37 @@ async function resolveGoogleProfile(resultOrUser) {
 }
 
 async function processGoogle(resultOrUser) {
-  if (!resultOrUser) { toast("Google সাইন-ইন সম্পন্ন হয়নি। আবার চেষ্টা করুন।", "err"); return; }
+  if (!resultOrUser) { toast("Google সাইন-ইন সম্পন্ন হয়নি। আবার চেষ্টা করুন।", "err"); return; }
   const gu = await resolveGoogleProfile(resultOrUser);
   const email = String((gu && gu.email) || "").toLowerCase().trim();
   if (!email) {
-    toast("Google সাইন-ইন তথ্য যাচাই করা যায়নি। Google অনুমতি দিয়ে আবার সাইন-ইন করুন।", "err");
-    console.error("Google sign-in result did not contain an email address.");
+    toast("Google সাইন-ইন তথ্য যাচাই করা যায়নি।", "err");
     return;
   }
 
-  // ১) আগে চেক করি ইমেইল আছে কিনা
+  const b = $("btnGoogle");
+  busy(b, true, "অ্যাকাউন্ট যাচাই হচ্ছে…");
+
+  // ১. চেক করা হবে এই ইমেইল দিয়ে আগে থেকে অ্যাকাউন্ট তৈরি করা আছে কি না
   let found = null;
   try {
     found = await lookupUser(email);
   } catch (e) {
-    console.error("Account lookup failed (treating as new user)", e);
-    // থামব না — নতুন ইউজার হিসেবে তৈরি করব
-  }
-
-  // ২) পুরনো ইউজার হলে সরাসরি লগইন
-  if (found) {
-    if (found.blocked) { toast("এই ইমেইল ব্লক করা হয়েছে।", "err"); return; }
-    await finish(found.profile, "Google লগইন সফল!");
+    console.error("Lookup error:", e);
+    busy(b, false);
+    toast("ডেটাবেজ চেক করতে সমস্যা হয়েছে। ইন্টারনেট পরীক্ষা করে আবার চেষ্টা করুন।", "err");
     return;
   }
 
-  // ৩) নতুন ইমেইল → সঙ্গে সঙ্গে অ্যাকাউন্ট তৈরি (থামবে না)
+  // ২. যদি ইমেইল দিয়ে আগে থেকেই অ্যাকাউন্ট থেকে থাকে -> কোনো নতুন অ্যাকাউন্ট বা UID তৈরি করবে না!
+  if (found) {
+    busy(b, false);
+    if (found.blocked) { toast("এই ইমেইল ব্লক করা হয়েছে।", "err"); return; }
+    await finish(found.profile, "Google লগইন সফল!");
+    return; // এখানেই শেষ!
+  }
+
+  // ৩. কেবল যদি ইমেইলটি একদম নতুন হয় (আগে থেকে কোনো অ্যাকাউন্ট না থাকে) -> তাহলেই নতুন একাউন্ট তৈরি করবে
   toast("নতুন অ্যাকাউন্ট তৈরি হচ্ছে…", "info");
   try {
     const p = await createUserDoc({
@@ -645,10 +622,11 @@ async function processGoogle(resultOrUser) {
       birth_date: "",
       address: ""
     });
-    await finish(p, "অ্যাকাউন্ট তৈরি হয়েছে!");
+    busy(b, false);
+    await finish(p, "অ্যাকাউন্ট তৈরি হয়েছে!");
   } catch (e) {
     console.error("Auto-create failed:", e);
-    // অটো তৈরি ব্যর্থ হলে জন্ম সাল প্যানেলে নিয়ে যাই (fallback)
+    busy(b, false);
     pend = {
       name: (gu && gu.displayName) || email.split("@")[0] || "ইউজার",
       email: email,
@@ -664,31 +642,71 @@ async function processGoogle(resultOrUser) {
 
 function gErr(e) {
   const c = e && e.code || "";
-  if (c === "auth/unauthorized-domain") return "ডোমেইন অনুমোদিত নয়: " + location.hostname + " — Firebase Authorized domains-এ যোগ করুন।";
+  if (c === "auth/unauthorized-domain") return "ডোমেইন অনুমোদিত নয়: " + location.hostname;
   if (c === "auth/operation-not-allowed") return "Firebase-এ Google Sign-In চালু করুন।";
-  if (c === "auth/popup-closed-by-user") return "পপআপ বন্ধ। আবার চেষ্টা করুন।";
+  if (c === "auth/popup-closed-by-user") return "পপআপ বন্ধ করা হয়েছে।";
   if (c === "auth/network-request-failed") return "নেটওয়ার্ক সমস্যা।";
   return "Google ব্যর্থ: " + (e.message || c);
 }
+
+window.receiveNativeGoogleSignIn = async function (info) {
+  try {
+    if (!info) { toast("Google সাইন-ইন সম্পন্ন হয়নি।", "err"); return; }
+    const email = String(info.email || "").toLowerCase().trim();
+    if (!email) { toast("ইমেইল পাওয়া যায়নি।", "err"); return; }
+    const fake = {
+      user: {
+        email: email,
+        displayName: info.name || info.displayName || email.split("@")[0] || "ইউজার",
+        photoURL: info.photo || info.photoURL || "",
+        uid: info.uid || info.auth_uid || "",
+        emailVerified: true,
+        providerData: [{ providerId: "google.com", email: email, displayName: info.name || "", photoURL: info.photo || "" }],
+        reload: async function () {}
+      },
+      additionalUserInfo: { profile: { email: email, name: info.name || "", picture: info.photo || "", email_verified: true } },
+      credential: null
+    };
+    await processGoogle(fake);
+  } catch (e) {
+    console.error(e);
+    toast(gErr(e), "err");
+    busy($("btnGoogle"), false);
+  } finally {
+    window._krGoogleBusy = false;
+  }
+};
 
 $("btnGoogle").onclick = async () => {
   if (window._krGoogleBusy) return;
   window._krGoogleBusy = true;
   const b = $("btnGoogle");
+  if (window.Android && typeof Android.startGoogleSignIn === "function") {
+    busy(b, true, "Google খুলছে…");
+    try {
+      Android.startGoogleSignIn();
+      setTimeout(function () {
+        if (window._krGoogleBusy) {
+          window._krGoogleBusy = false;
+          busy(b, false);
+        }
+      }, 120000);
+    } catch (e) {
+      window._krGoogleBusy = false;
+      busy(b, false);
+      toast("নেটিভ Google খুলতে ব্যর্থ।", "err");
+    }
+    return;
+  }
   busy(b, true, "Google খুলছে…");
   const pv = new firebase.auth.GoogleAuthProvider();
-  // নাম, ইমেইল, প্রোফাইল ছবি ও অন্যান্য বেসিক প্রোফাইল তথ্যের অনুমতি চাওয়া
   pv.addScope("openid");
   pv.addScope("profile");
   pv.addScope("email");
-  pv.addScope("https://www.googleapis.com/auth/userinfo.profile");
-  pv.addScope("https://www.googleapis.com/auth/userinfo.email");
-  // প্রতিবার অ্যাকাউন্ট বেছে নেওয়া + অনুমতি কনসেন্ট দেখানো
   pv.setCustomParameters({ prompt: "select_account consent" });
   try {
     try {
       const r = await auth.signInWithPopup(pv);
-      busy(b, true, "Firebase-এ সংরক্ষণ হচ্ছে…");
       await processGoogle(r);
     } catch (e) {
       if (e.code === "auth/unauthorized-domain") throw e;
@@ -707,7 +725,6 @@ $("btnGoogle").onclick = async () => {
   }
 };
 
-/* রিডাইরেক্ট দিয়ে ফিরলে */
 (async () => {
   try {
     const r = await auth.getRedirectResult();
